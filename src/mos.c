@@ -1558,6 +1558,32 @@ uint24_t mos_DIRFallback(const char path[static 1], const char *pattern, bool lo
 	return fr;
 }
 
+/*
+ * Extract directory and possibly glob pattern
+ * *out_dirPath and *out_pattern will be umm_malloc'd.
+ * Can return MOS_OUT_OF_MEMORY
+ */
+static MOSRESULT extract_dir_and_pattern(const char inputPath[static 1], char **out_dirPath, char **out_pattern)
+{
+	const char *last_path_elem = strrchr_pathsep(inputPath);
+	last_path_elem = last_path_elem ? last_path_elem + 1 : inputPath;
+	if (strchr(last_path_elem, '?') != 0 || strchr(last_path_elem, '*') != 0) {
+		*out_pattern = mos_strdup(last_path_elem);
+		*out_dirPath = mos_strndup(inputPath, last_path_elem - inputPath);
+		if (!*out_pattern || !*out_dirPath) {
+			goto handle_oom;
+		}
+	} else {
+		*out_dirPath = mos_strdup(inputPath);
+		if (!*out_dirPath) goto handle_oom;
+	}
+	return (MOSRESULT)FR_OK;
+handle_oom:
+	if (*out_pattern) umm_free(*out_pattern);
+	if (*out_dirPath) umm_free(*out_dirPath);
+	return MOS_OUT_OF_MEMORY;
+}
+
 // Directory listing
 // Returns:
 // - FatFS return code
@@ -1567,8 +1593,7 @@ uint24_t mos_DIR(const char inputPath[static 1], bool longListing)
 	FRESULT fr;
 	DIR dir;
 	char *dirPath = NULL;
-	const char *pattern = NULL;
-	bool usePattern = false;
+	char *pattern = NULL;
 	bool useColour = scrcolours > 2 && vdpSupportsTextPalette;
 	char str[12]; // Buffer for volume label
 	int longestFilename = 0;
@@ -1588,21 +1613,11 @@ uint24_t mos_DIR(const char inputPath[static 1], bool longListing)
 
 	vec_init(&entries, sizeof(SmallFilInfo));
 
-	// Extract directory and possibly glob pattern
-	{
-		const char *last_path_elem = strrchr_pathsep(inputPath);
-		last_path_elem = last_path_elem ? last_path_elem + 1 : inputPath;
-		if (strchr(last_path_elem, '?') != 0 || strchr(last_path_elem, '*') != 0) {
-			usePattern = true;
-			pattern = last_path_elem;
-			dirPath = mos_strndup(inputPath, last_path_elem - inputPath);
-		} else {
-			dirPath = mos_strdup(inputPath);
-		}
-		if (!dirPath) {
-			fr = mos_DIRFallback(inputPath, NULL, longListing);
-			goto cleanup;
-		}
+	fr = (FRESULT)extract_dir_and_pattern(inputPath, &dirPath, &pattern);
+
+	if (fr == MOS_OUT_OF_MEMORY) {
+		fr = mos_DIRFallback(inputPath, NULL, longListing);
+		goto cleanup;
 	}
 	// printf("dirPath %s, pattern %s\n", dirPath, pattern ? pattern : "(none)");
 
@@ -1620,7 +1635,7 @@ uint24_t mos_DIR(const char inputPath[static 1], bool longListing)
 		goto cleanup;
 	}
 
-	if (usePattern) {
+	if (pattern) {
 		fr = f_findfirst(&dir, &filinfo, dirPath, pattern);
 	} else {
 		fr = f_readdir(&dir, &filinfo);
@@ -1649,13 +1664,13 @@ uint24_t mos_DIR(const char inputPath[static 1], bool longListing)
 			goto cleanup;
 		}
 
-		if (usePattern) {
+		if (pattern) {
 			fr = f_findnext(&dir, &filinfo);
 		} else {
 			fr = f_readdir(&dir, &filinfo);
 		}
 
-		if (!usePattern && filinfo.fname[0] == 0)
+		if (!pattern && filinfo.fname[0] == 0)
 			break;
 	}
 	f_closedir(&dir);
@@ -1730,6 +1745,7 @@ cleanup:
 	}
 	vec_free(&entries);
 	if (dirPath) umm_free(dirPath);
+	if (pattern) umm_free(pattern);
 	return fr;
 
 oom_fallback:
@@ -1776,8 +1792,6 @@ uint24_t mos_REN(char *srcPath, char *dstPath, bool verbose)
 	DIR dir;
 	FILINFO fno;
 	char *srcDir = NULL, *pattern = NULL, *fullSrcPath = NULL, *fullDstPath = NULL, *srcFilename = NULL;
-	char *asteriskPos, *lastSeparator;
-	bool usePattern = false;
 
 	DEBUG_STACK();
 
@@ -1786,27 +1800,12 @@ uint24_t mos_REN(char *srcPath, char *dstPath, bool verbose)
 		return FR_INVALID_PARAMETER;
 	}
 
-	asteriskPos = strchr(srcPath, '*');
-	lastSeparator = asteriskPos ? strrchr(srcPath, '/') : NULL;
-
-	if (asteriskPos != NULL) {
-		if (lastSeparator != NULL) {
-			srcDir = mos_strndup(srcPath, lastSeparator - srcPath + 1); // Include '/'
-			pattern = mos_strdup(asteriskPos);
-		} else {
-			srcDir = mos_strdup("");				    // Empty string for later use as a destination path
-			pattern = mos_strdup(srcPath);
-		}
-		if (!srcDir || !pattern) {
-			fr = FR_INT_ERR;					    // Out of memory
-			goto cleanup;
-		}
-		usePattern = true;
-	} else {
-		usePattern = false;
+	fr = (FRESULT)extract_dir_and_pattern(srcPath, &srcDir, &pattern);
+	if (fr != FR_OK) {
+		goto cleanup;
 	}
 
-	if (usePattern) {
+	if (pattern) {
 		if (!isDirectory(dstPath)) {
 			fr = FR_INVALID_PARAMETER;
 			goto cleanup;
@@ -1883,6 +1882,38 @@ uint24_t mos_COPY_API(char *srcPath, char *dstPath)
 	return mos_COPY(srcPath, dstPath, false);
 }
 
+static FRESULT copy_file(char *srcPath, char *destPath, bool verbose)
+{
+	FIL fsrc, fdst;
+	FRESULT fr;
+	uint8_t buffer[512];
+	UINT br, bw;
+
+	DEBUG_STACK();
+
+	fr = f_open(&fsrc, srcPath, FA_READ);
+	if (fr != FR_OK) {
+		return fr;
+	}
+	fr = f_open(&fdst, destPath, FA_WRITE | FA_CREATE_NEW);
+	if (fr != FR_OK) {
+		f_close(&fsrc);
+		return fr;
+	}
+
+	if (verbose) printf("Copying %s to %s\r\n", srcPath, destPath);
+	while (1) {
+		fr = f_read(&fsrc, buffer, sizeof(buffer), &br);
+		if (br == 0 || fr != FR_OK) break;
+		fr = f_write(&fdst, buffer, br, &bw);
+		if (bw < br || fr != FR_OK) break;
+	}
+	f_close(&fsrc);
+	f_close(&fdst);
+
+	return 0;
+}
+
 // Copy file
 // Parameters:
 // - srcPath: Source path of file to copy
@@ -1894,14 +1925,9 @@ uint24_t mos_COPY_API(char *srcPath, char *dstPath)
 uint24_t mos_COPY(char *srcPath, char *dstPath, bool verbose)
 {
 	FRESULT fr;
-	FIL fsrc, fdst;
 	DIR dir;
 	FILINFO *fno;
-	uint8_t buffer[512];
-	UINT br, bw;
 	char *srcDir = NULL, *pattern = NULL, *fullSrcPath = NULL, *fullDstPath = NULL, *srcFilename = NULL;
-	char *asteriskPos, *lastSeparator;
-	bool usePattern = false;
 
 	DEBUG_STACK();
 
@@ -1912,31 +1938,12 @@ uint24_t mos_COPY(char *srcPath, char *dstPath, bool verbose)
 	fno = umm_malloc(sizeof(FILINFO));
 	if (!fno) return MOS_OUT_OF_MEMORY;
 
-	asteriskPos = strchr(srcPath, '*');
-	lastSeparator = asteriskPos ? strrchr(srcPath, '/') : NULL;
-
-	if (asteriskPos != NULL) {
-		usePattern = true;
-		if (lastSeparator != NULL) {
-			srcDir = mos_strndup(srcPath, lastSeparator - srcPath + 1); // Include '/'
-			pattern = mos_strdup(asteriskPos);
-		} else {
-			srcDir = mos_strdup("");
-			pattern = mos_strdup(srcPath);
-		}
-		if (!srcDir || !pattern) {
-			fr = FR_INT_ERR;
-			goto cleanup;
-		}
-	} else {
-		srcDir = mos_strdup(srcPath);
-		if (!srcDir) {
-			fr = (FRESULT)MOS_OUT_OF_MEMORY;
-			goto cleanup;
-		}
+	fr = (FRESULT)extract_dir_and_pattern(srcPath, &srcDir, &pattern);
+	if (fr != FR_OK) {
+		goto cleanup;
 	}
 
-	if (usePattern) {
+	if (pattern) {
 		if (!isDirectory(dstPath)) {
 			fr = FR_INVALID_PARAMETER;
 			goto cleanup;
@@ -1951,34 +1958,14 @@ uint24_t mos_COPY(char *srcPath, char *dstPath, bool verbose)
 			fullSrcPath = umm_malloc(srcPathLen);
 			fullDstPath = umm_malloc(dstPathLen);
 
-			if (!fullSrcPath || !fullDstPath) {
-				fr = FR_INT_ERR;
-				goto file_cleanup;
+			if (fullSrcPath && fullDstPath) {
+				snprintf(fullSrcPath, srcPathLen, "%s%s", srcDir, fno->fname);
+				snprintf(fullDstPath, dstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), fno->fname);
+				copy_file(fullSrcPath, fullDstPath, verbose);
+			} else {
+				fr = (FRESULT)MOS_OUT_OF_MEMORY;
 			}
 
-			snprintf(fullSrcPath, srcPathLen, "%s%s", srcDir, fno->fname);
-			snprintf(fullDstPath, dstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), fno->fname);
-
-			fr = f_open(&fsrc, fullSrcPath, FA_READ);
-			if (fr != FR_OK) goto file_cleanup;
-			fr = f_open(&fdst, fullDstPath, FA_WRITE | FA_CREATE_NEW);
-			if (fr != FR_OK) {
-				f_close(&fsrc);
-				goto file_cleanup;
-			}
-
-			if (verbose) printf("Copying %s to %s\r\n", fullSrcPath, fullDstPath);
-			while (1) {
-				fr = f_read(&fsrc, buffer, sizeof(buffer), &br);
-				if (br == 0 || fr != FR_OK) break;
-				fr = f_write(&fdst, buffer, br, &bw);
-				if (bw < br || fr != FR_OK) break;
-			}
-
-			f_close(&fsrc);
-			f_close(&fdst);
-
-		file_cleanup:
 			if (fullSrcPath) umm_free(fullSrcPath);
 			if (fullDstPath) umm_free(fullDstPath);
 			fullSrcPath = NULL;
@@ -2005,26 +1992,7 @@ uint24_t mos_COPY(char *srcPath, char *dstPath, bool verbose)
 			strbuf_append(fullDstPath, fullDstPathLen, dstPath, fullDstPathLen);
 		}
 
-		fr = f_open(&fsrc, srcPath, FA_READ);
-		if (fr != FR_OK) {
-			goto cleanup;
-		}
-		fr = f_open(&fdst, fullDstPath, FA_WRITE | FA_CREATE_NEW);
-		if (fr != FR_OK) {
-			f_close(&fsrc);
-			goto cleanup;
-		}
-
-		if (verbose) printf("Copying %s to %s\r\n", srcPath, fullDstPath);
-		while (1) {
-			fr = f_read(&fsrc, buffer, sizeof(buffer), &br);
-			if (br == 0 || fr != FR_OK) break;
-			fr = f_write(&fdst, buffer, br, &bw);
-			if (bw < br || fr != FR_OK) break;
-		}
-
-		f_close(&fsrc);
-		f_close(&fdst);
+		fr = copy_file(srcPath, fullDstPath, verbose);
 	}
 
 cleanup:
