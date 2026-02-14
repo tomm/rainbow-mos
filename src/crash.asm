@@ -69,10 +69,13 @@ _on_crash:
 		jr z, 3f
 		cp 'R'
 		jr z, 3f
-		cp 'x'
+		cp 't'
 		jr z, 4f
-		cp 'X'
+		cp 'T'
 		jr z, 4f
+		; esc: reboot
+		cp 27
+		jp z, 0
 		jr 2b
 
 		; restore everything and return to userspace
@@ -85,6 +88,8 @@ _on_crash:
 		pop iy
 		; ret, not ret.lil, because we assume accidental entry to
 		; rst38 from ADL code. so rst.lil was not used, just rst
+		; Also allows rst38 handler to be used for stepping through
+		; code, with rst 0x38 as a breakpoint
 		ret
 
 	4:	; 'x': Exit to mos
@@ -94,10 +99,10 @@ _on_crash:
 
 panic_msg:
 		.ascii "\x11\x81\x11\x10"
-		.ascii "!! RST $38 panic. Guru meditation:   !!\r\n"
-		.ascii "PC:%06x MB:%02x SPS:%04x SPL:%06x\r\n"
-		.ascii "AF:%06x BC:%06x DE:%06x HL:%06x\r\n"
-		.ascii "IX:%06x IY:%06x\r\n"
-		.ascii "!! [r] resume, [x] exit, [ctrl-alt-del] reboot !!\r\n"
+		.ascii "<< RST $38 PANIC: "
+		.ascii "PC:%06x MB:%02x SPS:%04x SPL:%06x "
+		.ascii "AF:%06x BC:%06x DE:%06x HL:%06x "
+		.ascii "IX:%06x IY:%06x >>"
 		.ascii "\x11\x80\x11\x0f"
+		.ascii "\r\n[r]esume, [t]erminate, [esc] reboot\r\n"
 		.db 0
