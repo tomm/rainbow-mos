@@ -98,7 +98,7 @@ static const t_mosCommand mosCommands[] = {
 	{ "DELETE", &mos_cmdDEL, HELP_DELETE_ARGS, HELP_DELETE },
 	{ "DIR", &mos_cmdDIR, HELP_CAT_ARGS, HELP_CAT },
 	{ "DISC", &mos_cmdDISC, NULL, NULL },
-	{ "ECHO", &mos_cmdPRINTF, HELP_PRINTF_ARGS, HELP_PRINTF },
+	{ "ECHO", &mos_cmdECHO, HELP_ECHO_ARGS, HELP_ECHO },
 	{ "ERASE", &mos_cmdDEL, HELP_DELETE_ARGS, HELP_DELETE },
 	{ "EXEC", &mos_cmdEXEC, HELP_EXEC_ARGS, HELP_EXEC },
 	{ "FBMODE", &mos_cmdFBMODE, HELP_FBMODE_ARGS, HELP_FBMODE },
@@ -529,6 +529,14 @@ static int xdigit_to_int(char digit)
 	} else {
 		return digit - 55;
 	}
+}
+
+int mos_cmdECHO(char *ptr)
+{
+	int ret = mos_cmdPRINTF(ptr);
+	putch('\r');
+	putch('\n');
+	return ret;
 }
 
 // PRINTF command
@@ -2208,6 +2216,18 @@ uint8_t mos_FLSEEK(uint8_t fh, uint32_t offset)
 	return FR_INVALID_OBJECT;
 }
 
+// Alternative FLSEEK function that uses a pointer to the 32-bit offset value
+// Parameters:
+// - fh: File handle
+// - offset: Pointer to the position of the pointer relative to the start of the file
+// Returns:
+// - FRESULT
+//
+uint8_t mos_FLSEEKP(uint8_t fh, uint32_t *offset)
+{
+	return mos_FLSEEK(fh, *offset);
+}
+
 // Check whether file is at EOF (end of file)
 // Parameters:
 // - fh: File handle
@@ -2263,6 +2283,19 @@ uint8_t mos_GETRTC(char buffer[static 64])
 	rtc_formatDateTime(buffer, &t);
 
 	return strlen(buffer);
+}
+
+void mos_UNPACKRTC(uint24_t address, uint8_t flags)
+{
+	if (flags & 1) {
+		rtc_update();
+	}
+	if (address != 0) {
+		rtc_unpack(&rtc, (vdp_time_t *)address);
+	}
+	if (flags & 2) {
+		rtc_update();
+	}
 }
 
 // Set the RTC

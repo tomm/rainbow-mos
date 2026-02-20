@@ -73,6 +73,7 @@ int mos_cmdHELP(char *ptr);
 int mos_cmdHOTKEY(char *ptr);
 int mos_cmdMEM(char *ptr);
 int mos_cmdPRINTF(char *ptr);
+int mos_cmdECHO(char *ptr);
 int mos_cmdFBMODE(char *ptr);
 int mos_cmdMEMDUMP(char *ptr);
 
@@ -148,6 +149,9 @@ uint8_t fat_EOF(FIL *fp);
 
 #define HELP_PRINTF "Print a string to the VDU, with common unix-style escapes\r\n"
 #define HELP_PRINTF_ARGS "<string>"
+
+#define HELP_ECHO "Like PRINTF, but terminates with a newline (\\r\\n)\r\n"
+#define HELP_ECHO_ARGS "<string>"
 
 #define HELP_RENAME "Rename a file in the same folder\r\n"
 #define HELP_RENAME_ARGS "<filename1> <filename2>"

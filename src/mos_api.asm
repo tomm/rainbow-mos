@@ -145,8 +145,8 @@ mos_api_block1_start:	DW	mos_api_getkey		; 0x00
 			DW	mos_api_i2c_write	; 0x21
 			DW	mos_api_i2c_read	; 0x22
 
-			DW  mos_api_not_implemented ; 0x23
-			DW  mos_api_not_implemented ; 0x24
+			DW  mos_api_unpackrtc       ; 0x23
+			DW  mos_api_flseek_p	    ; 0x24
 			DW  mos_api_not_implemented ; 0x25
 			DW  mos_api_not_implemented ; 0x26
 			DW  mos_api_not_implemented ; 0x27
@@ -732,6 +732,20 @@ mos_api_getrtc:		LD	A, MB		; Check if MBASE is 0
 			POP	HL
 			RET 
 
+; Unpack RTC data
+; HLU: Pointer to a buffer to copy the RTC data to
+; C: Flags (bit 0 = refresh RTC before unpacking, bit 1 = refresh RTC after unpacking)
+;
+mos_api_unpackrtc:	LD	A, MB		; Check if MBASE is 0
+			OR	A, A
+			CALL	NZ, SET_AHL24	; If it is running in classic Z80 mode, set U to MB
+			PUSH	BC		; UINT8 flags
+			PUSH 	HL		; UINT24 address
+			CALL	_mos_UNPACKRTC
+			POP	HL
+			POP	BC
+			RET
+
 ; Set the RTC
 ; HLU: Pointer to a buffer with the time data in
 ;
@@ -1084,10 +1098,23 @@ mos_api_flseek:		PUSH 	DE		; UINT32 offset (msb)
 			PUSH	HL 		; UINT32 offset (lsb)
 			PUSH	BC		; UINT8 fh
 			CALL	_mos_FLSEEK
-			LD	A, L 		; FRESULT
 			POP	BC
 			POP	HL
 			POP	DE
+			RET
+
+; Move the read/write pointer in a file, using pointer to offset value
+;   C: Filehandle
+; HLU: Pointer to the offset value from the start of the file (DWORD)
+; Returns:
+;   A: FRESULT
+;
+mos_api_flseek_p:	CALL	FIX_HLU24	; Fix the HLU to ensure it's a 24-bit pointer
+			PUSH	HL		; DWORD * offset
+			PUSH	BC		; UINT8 fh
+			CALL	_mos_FLSEEKP
+			POP	BC
+			POP	HL
 			RET
 
 
