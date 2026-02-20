@@ -17,9 +17,9 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #include "../src_umm_malloc/umm_malloc.h"
+#include "debug.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include "debug.h"
 
 /* For sanity */
 typedef int int24_t;

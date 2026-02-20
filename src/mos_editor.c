@@ -513,7 +513,8 @@ static void do_tab_complete(char *buffer, int buffer_len, int *out_InsertPos)
 		}
 	}
 
-	vec_foreach(&tab_ctx.candidates, tab_expansion_t, item) {
+	vec_foreach(&tab_ctx.candidates, tab_expansion_t, item)
+	{
 		umm_free(item->expansion);
 	}
 	vec_free(&tab_ctx.candidates);
