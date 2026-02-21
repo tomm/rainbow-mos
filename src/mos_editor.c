@@ -481,35 +481,38 @@ static void do_tab_complete(char *buffer, int buffer_len, int *out_InsertPos)
 	const int num_chars_added = strlen(tab_ctx.expansion);
 	if (tab_ctx.num_matches > 0 && tab_complete_state_showall) {
 		print_expansion_candidates(&tab_ctx.candidates);
-	}
-	if (tab_ctx.num_matches > 1 && num_chars_added == 0) {
-		tab_complete_state_showall = true;
-	}
-	bool do_full_redraw = false;
-	if (num_chars_added > 0 || (num_chars_added == 0 && tab_ctx.num_matches == 1)) {
-		if (tab_ctx.num_matches == 1 && tab_ctx.expansion[num_chars_added - 1] != '/') {
-			strbuf_append(tab_ctx.expansion, sizeof(tab_ctx.expansion), " ", 1);
-		}
-		const bool append_at_eol = (*out_InsertPos) == (int)strlen(buffer);
-		strbuf_insert(buffer, buffer_len, tab_ctx.expansion, *out_InsertPos);
-		if (append_at_eol) {
-			printf("%s", tab_ctx.expansion);
-			*out_InsertPos = strlen(buffer);
-		} else {
-			*out_InsertPos = (*out_InsertPos) + strlen(tab_ctx.expansion);
-			do_full_redraw = true;
-		}
-		return;
-	} else if (tab_complete_state_showall) {
-		do_full_redraw = true;
-	}
-	if (do_full_redraw) {
+
+		// do a full redraw of cmd line
 		putch('\r');
 		mos_print_prompt();
 		printf("%s", buffer);
 		uint8_t insert_pos_adjust = strlen(buffer) - (*out_InsertPos);
 		while (insert_pos_adjust--) {
 			doLeftCursor();
+		}
+	}
+
+	if (tab_ctx.num_matches > 1 && num_chars_added == 0) {
+		tab_complete_state_showall = true;
+	}
+
+	if (num_chars_added > 0 || (num_chars_added == 0 && tab_ctx.num_matches == 1)) {
+		if (tab_ctx.num_matches == 1 && tab_ctx.expansion[num_chars_added - 1] != '/') {
+			strbuf_append(tab_ctx.expansion, sizeof(tab_ctx.expansion), " ", 1);
+		}
+		const bool append_at_eol = (*out_InsertPos) == (int)strlen(buffer);
+		int chars_inserted = strbuf_insert(buffer, buffer_len, tab_ctx.expansion, *out_InsertPos);
+		printf("%.*s", chars_inserted, tab_ctx.expansion);
+
+		*out_InsertPos = (*out_InsertPos) + chars_inserted;
+		if (!append_at_eol) {
+			// also need to redraw part of cmd after insert pos
+			int len_tail = strlen(&buffer[*out_InsertPos]);
+			printf("%.*s", len_tail, &buffer[*out_InsertPos]);
+			// then move back to insert pos
+			while (len_tail--) {
+				doLeftCursor();
+			}
 		}
 	}
 

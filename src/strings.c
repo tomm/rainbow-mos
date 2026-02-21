@@ -36,7 +36,7 @@ char *mos_strndup(const char *s, size_t n)
 	return d;
 }
 
-void strbuf_insert(char *buf, int buf_capacity, const char *src, int insert_loc)
+size_t strbuf_insert(char *buf, int buf_capacity, const char *src, int insert_loc)
 {
 	int src_len = strlen(src);
 	int dest_tail_len = strlen(buf + insert_loc) + 1;
@@ -49,9 +49,11 @@ void strbuf_insert(char *buf, int buf_capacity, const char *src, int insert_loc)
 	buf[insert_loc + src_len + count] = 0;
 
 	count = MIN(src_len, buf_capacity - insert_loc - 1);
+
 	if (count > 0) {
 		memcpy(buf + insert_loc, src, count);
 	}
+	return count;
 }
 
 /* Assumes buf contains a null-terminated string already.
