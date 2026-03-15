@@ -40,7 +40,7 @@
 #include "defines.h"
 #include "ez80f92.h"
 #include <ctype.h>
-#include <stdio.h>
+#include "printf.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -172,7 +172,7 @@ static const char *mos_errors[] = {
 void mos_error(MOSRESULT error)
 {
 	if (error >= 0 && error < mos_errors_count) {
-		printf("\n\r%s\n\r", mos_errors[error]);
+		kprintf("\n\r%s\n\r", mos_errors[error]);
 	}
 }
 
@@ -214,7 +214,7 @@ uint24_t mos_input(char *buffer, int bufferLength)
 	int24_t retval;
 	mos_print_prompt();
 	retval = mos_EDITLINE(buffer, bufferLength, 3);
-	printf("\n\r");
+	kprintf("\n\r");
 	return retval;
 }
 
@@ -222,7 +222,7 @@ void mos_print_prompt(void)
 {
 	uint8_t oldTextFg = active_console->get_fg_color_index();
 	set_color(get_primary_color());
-	printf("%s %c", cwd, MOS_prompt);
+	kprintf("%s %c", cwd, MOS_prompt);
 	set_color(oldTextFg);
 }
 
@@ -441,7 +441,7 @@ int mos_exec(char *buffer, bool in_mos)
 		}
 	}
 
-	snprintf(path, sizeof(path), "/mos/%s.bin", ptr);
+	ksnprintf(path, sizeof(path), "/mos/%s.bin", ptr);
 	fr = mos_LOAD(path, MOS_starLoadAddress, 0);
 	if (fr == FR_OK) {
 		return mos_runBin(MOS_starLoadAddress);
@@ -451,7 +451,7 @@ int mos_exec(char *buffer, bool in_mos)
 	}
 
 	if (in_mos) {
-		snprintf(path, sizeof(path), "%s.bin", ptr);
+		ksnprintf(path, sizeof(path), "%s.bin", ptr);
 		fr = mos_LOAD(path, MOS_defaultLoadAddress, 0);
 		if (fr == FR_OK) {
 			return mos_runBin(MOS_defaultLoadAddress);
@@ -459,7 +459,7 @@ int mos_exec(char *buffer, bool in_mos)
 		if (fr == MOS_OVERLAPPING_SYSTEM) {
 			return fr;
 		}
-		snprintf(path, sizeof(path), "/bin/%s.bin", ptr);
+		ksnprintf(path, sizeof(path), "/bin/%s.bin", ptr);
 		fr = mos_LOAD(path, MOS_defaultLoadAddress, 0);
 		if (fr == FR_OK) {
 			return mos_runBin(MOS_defaultLoadAddress);
@@ -607,18 +607,18 @@ int mos_cmdHOTKEY(char *ptr)
 
 	if (!mos_parseNumber(NULL, &fn_number)) {
 		uint8_t key;
-		printf("Hotkey assignments:\r\n\r\n");
+		kprintf("Hotkey assignments:\r\n\r\n");
 
 		for (key = 0; key < 12; key++) {
-			printf("F%d: %s\r\n", key + 1, hotkey_strings[key] == NULL ? "N/A" : hotkey_strings[key]);
+			kprintf("F%d: %s\r\n", key + 1, hotkey_strings[key] == NULL ? "N/A" : hotkey_strings[key]);
 		}
 
-		printf("\r\n");
+		kprintf("\r\n");
 		return 0;
 	}
 
 	if (fn_number < 1 || fn_number > 12) {
-		printf("Invalid FN-key number.\r\n");
+		kprintf("Invalid FN-key number.\r\n");
 		return 0;
 	}
 
@@ -626,9 +626,9 @@ int mos_cmdHOTKEY(char *ptr)
 		if (hotkey_strings[fn_number - 1] != NULL) {
 			umm_free(hotkey_strings[fn_number - 1]);
 			hotkey_strings[fn_number - 1] = NULL;
-			printf("F%u cleared.\r\n", fn_number);
+			kprintf("F%u cleared.\r\n", fn_number);
 		} else
-			printf("F%u already clear, no hotkey command provided.\r\n", fn_number);
+			kprintf("F%u already clear, no hotkey command provided.\r\n", fn_number);
 
 		return 0;
 	}
@@ -794,31 +794,31 @@ int mos_cmdDEL(char *ptr)
 				break;
 			}
 
-			snprintf(fullPath, fullPathLen, "%s/%s", dirPath, fno.fname); // Construct full path
+			ksnprintf(fullPath, fullPathLen, "%s/%s", dirPath, fno.fname); // Construct full path
 
 			if (!force) {
 				int24_t retval;
 				// we could potentially support "All" here, and when detected changing `force` to true
-				printf("Delete %s? (Yes/No/Cancel) ", fullPath);
+				kprintf("Delete %s? (Yes/No/Cancel) ", fullPath);
 				retval = mos_EDITLINE(verify, sizeof(verify), 13);
-				printf("\n\r");
+				kprintf("\n\r");
 				if (retval == 13) {
 					if (strcasecmp(verify, "Cancel") == 0 || strcasecmp(verify, "C") == 0) {
-						printf("Cancelled.\r\n");
+						kprintf("Cancelled.\r\n");
 						umm_free(fullPath);
 						break;
 					}
 					if (strcasecmp(verify, "Yes") == 0 || strcasecmp(verify, "Y") == 0) {
-						printf("Deleting %s.\r\n", fullPath);
+						kprintf("Deleting %s.\r\n", fullPath);
 						fr = f_unlink(fullPath);
 					}
 				} else {
-					printf("Cancelled.\r\n");
+					kprintf("Cancelled.\r\n");
 					umm_free(fullPath);
 					break;
 				}
 			} else {
-				printf("Deleting %s\r\n", fullPath);
+				kprintf("Deleting %s\r\n", fullPath);
 				fr = f_unlink(fullPath);
 			}
 			umm_free(fullPath);
@@ -828,7 +828,7 @@ int mos_cmdDEL(char *ptr)
 		}
 
 		f_closedir(&dir);
-		printf("\r\n");
+		kprintf("\r\n");
 	} else {
 		fr = f_unlink(filename);
 	}
@@ -1081,7 +1081,7 @@ int mos_cmdTIME(char *ptr)
 	// Return the new time
 	//
 	mos_GETRTC(buffer);
-	printf("%s\n\r", buffer);
+	kprintf("%s\n\r", buffer);
 	return 0;
 }
 
@@ -1095,19 +1095,19 @@ int mos_cmdMEM(char *ptr)
 {
 	int try_len = HEAP_LEN;
 
-	printf("ROM      &000000-&01ffff     %2d%% used\r\n", ((int)__rodata_end + (int)__data_len) / 1311);
+	kprintf("ROM      &000000-&01ffff     %2d%% used\r\n", ((int)__rodata_end + (int)__data_len) / 1311);
 	if (fb_mode != 255) {
-		printf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)fb_base - 1, (int)fb_base - 0x40000);
-		printf("FRAMEBUF &%06x-&%06x %6d bytes\r\n", (uint24_t)fb_base, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - (int)fb_base);
+		kprintf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)fb_base - 1, (int)fb_base - 0x40000);
+		kprintf("FRAMEBUF &%06x-&%06x %6d bytes\r\n", (uint24_t)fb_base, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - (int)fb_base);
 	} else {
-		printf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - 0x40000);
+		kprintf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - 0x40000);
 	}
-	printf("STACK24  &%06x-&%06x %6d bytes\r\n", (int)_stack - SPL_STACK_SIZE, (int)_stack - 1, SPL_STACK_SIZE);
+	kprintf("STACK24  &%06x-&%06x %6d bytes\r\n", (int)_stack - SPL_STACK_SIZE, (int)_stack - 1, SPL_STACK_SIZE);
 	// data and bss together
-	printf("MOS:DATA &%06x-&%06x %6d bytes\r\n", (int)__data_start, (int)__heapbot - 1, (int)__heapbot - (int)__data_start);
-	printf("MOS:HEAP &%06x-&%06x %6d bytes\r\n", (int)__heapbot, (int)__heaptop - 1, HEAP_LEN);
-	printf("RESERVED &b7e000-&b7ffff   8192 bytes\r\n");
-	printf("\r\n");
+	kprintf("MOS:DATA &%06x-&%06x %6d bytes\r\n", (int)__data_start, (int)__heapbot - 1, (int)__heapbot - (int)__data_start);
+	kprintf("MOS:HEAP &%06x-&%06x %6d bytes\r\n", (int)__heapbot, (int)__heaptop - 1, HEAP_LEN);
+	kprintf("RESERVED &b7e000-&b7ffff   8192 bytes\r\n");
+	kprintf("\r\n");
 
 	// find largest kmalloc contiguous region
 	for (; try_len > 0; try_len -= 8) {
@@ -1118,12 +1118,12 @@ int mos_cmdMEM(char *ptr)
 		}
 	}
 
-	printf("Largest free MOS:HEAP fragment: %d b\r\n", try_len);
-	printf("Sysvars at &%06x\r\n", (uint24_t)sysvars);
+	kprintf("Largest free MOS:HEAP fragment: %d b\r\n", try_len);
+	kprintf("Sysvars at &%06x\r\n", (uint24_t)sysvars);
 #ifdef DEBUG
-	printf("Stack highwatermark: &%06x (%d b)\r\n", stack_highwatermark, (uint24_t)_stack - stack_highwatermark);
+	kprintf("Stack highwatermark: &%06x (%d b)\r\n", stack_highwatermark, (uint24_t)_stack - stack_highwatermark);
 #endif /* DEBUG */
-	printf("\r\n");
+	kprintf("\r\n");
 
 	return 0;
 }
@@ -1169,13 +1169,13 @@ int mos_cmdMEMDUMP(char *ptr)
 int mos_cmdCREDITS(char *ptr)
 {
 	mos_bootmsg();
-	printf("Agon Quark MOS (c) 2022 Dean Belfield\n\r");
-	printf("FabGL 1.0.8 (c) 2019-2022 by Fabrizio Di Vittorio\n\r");
-	printf("FatFS R0.14b (c) 2021 ChaN\n\r");
-	printf("umm_malloc Copyright (c) 2015 Ralph Hempel\n\r");
-	printf("\n\r");
+	kprintf("Agon Quark MOS (c) 2022 Dean Belfield\n\r");
+	kprintf("FabGL 1.0.8 (c) 2019-2022 by Fabrizio Di Vittorio\n\r");
+	kprintf("FatFS R0.14b (c) 2021 ChaN\n\r");
+	kprintf("umm_malloc Copyright (c) 2015 Ralph Hempel\n\r");
+	kprintf("\n\r");
 #ifdef DEBUG
-	printf("This is a DEBUG build\r\n");
+	kprintf("This is a DEBUG build\r\n");
 #endif /* DEBUG */
 	return 0;
 }
@@ -1627,7 +1627,7 @@ uint24_t mos_DIR(const char inputPath[static 1], bool longListing)
 		fr = mos_DIRFallback(inputPath, NULL, longListing);
 		goto cleanup;
 	}
-	// printf("dirPath %s, pattern %s\n", dirPath, pattern ? pattern : "(none)");
+	// kprintf("dirPath %s, pattern %s\n", dirPath, pattern ? pattern : "(none)");
 
 	if (useColour) {
 		textFg = active_console->get_fg_color_index();
@@ -1804,7 +1804,7 @@ uint24_t mos_REN(char *srcPath, char *dstPath, bool verbose)
 	DEBUG_STACK();
 
 	if (strchr(dstPath, '*') != NULL) {
-		// printf("Wildcards permitted in source only.\r\n");
+		// kprintf("Wildcards permitted in source only.\r\n");
 		return FR_INVALID_PARAMETER;
 	}
 
@@ -1836,10 +1836,10 @@ uint24_t mos_REN(char *srcPath, char *dstPath, bool verbose)
 				break;
 			}
 
-			snprintf(fullSrcPath, srcPathLen, "%s%s", srcDir, fno.fname);
-			snprintf(fullDstPath, dstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), fno.fname);
+			ksnprintf(fullSrcPath, srcPathLen, "%s%s", srcDir, fno.fname);
+			ksnprintf(fullDstPath, dstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), fno.fname);
 
-			if (verbose) printf("Moving %s to %s\r\n", fullSrcPath, fullDstPath);
+			if (verbose) kprintf("Moving %s to %s\r\n", fullSrcPath, fullDstPath);
 			fr = f_rename(fullSrcPath, fullDstPath);
 			umm_free(fullSrcPath);
 			umm_free(fullDstPath);
@@ -1863,7 +1863,7 @@ uint24_t mos_REN(char *srcPath, char *dstPath, bool verbose)
 			}
 			srcFilename = strrchr(srcPath, '/');
 			srcFilename = (srcFilename != NULL) ? srcFilename + 1 : srcPath;
-			snprintf(fullDstPath, fullDstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), srcFilename);
+			ksnprintf(fullDstPath, fullDstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), srcFilename);
 
 			fr = f_rename(srcPath, fullDstPath);
 			umm_free(fullDstPath);
@@ -1909,7 +1909,7 @@ static FRESULT copy_file(char *srcPath, char *destPath, bool verbose)
 		return fr;
 	}
 
-	if (verbose) printf("Copying %s to %s\r\n", srcPath, destPath);
+	if (verbose) kprintf("Copying %s to %s\r\n", srcPath, destPath);
 	while (1) {
 		fr = f_read(&fsrc, buffer, sizeof(buffer), &br);
 		if (br == 0 || fr != FR_OK) break;
@@ -1967,8 +1967,8 @@ uint24_t mos_COPY(char *srcPath, char *dstPath, bool verbose)
 			fullDstPath = umm_malloc(dstPathLen);
 
 			if (fullSrcPath && fullDstPath) {
-				snprintf(fullSrcPath, srcPathLen, "%s%s", srcDir, fno->fname);
-				snprintf(fullDstPath, dstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), fno->fname);
+				ksnprintf(fullSrcPath, srcPathLen, "%s%s", srcDir, fno->fname);
+				ksnprintf(fullDstPath, dstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), fno->fname);
 				copy_file(fullSrcPath, fullDstPath, verbose);
 			} else {
 				fr = (FRESULT)MOS_OUT_OF_MEMORY;
@@ -1994,7 +1994,7 @@ uint24_t mos_COPY(char *srcPath, char *dstPath, bool verbose)
 		srcFilename = strrchr(srcPath, '/');
 		srcFilename = (srcFilename != NULL) ? srcFilename + 1 : srcPath;
 		if (isDirectory(dstPath)) {
-			snprintf(fullDstPath, fullDstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), srcFilename);
+			ksnprintf(fullDstPath, fullDstPathLen, "%s%s%s", dstPath, (dstPath[strlen(dstPath) - 1] == '/' ? "" : "/"), srcFilename);
 		} else {
 			fullDstPath[0] = 0;
 			strbuf_append(fullDstPath, fullDstPathLen, dstPath, fullDstPathLen);
@@ -2047,7 +2047,7 @@ uint24_t mos_EXEC(char *filename, char *buffer, uint24_t size)
 			f_gets(buffer, size, &fil);
 			fr = mos_exec(buffer, true);
 			if (fr != FR_OK) {
-				printf("\r\nError executing %s at line %d\r\n", filename, line);
+				kprintf("\r\nError executing %s at line %d\r\n", filename, line);
 				break;
 			}
 		}
@@ -2381,9 +2381,9 @@ extern void hxload_vdp(void);
 
 int mos_cmdSIDELOAD(char *p)
 {
-	printf("Waiting for VDP data...\r\n");
+	kprintf("Waiting for VDP data...\r\n");
 	hxload_vdp();
-	printf("Done\r\n");
+	kprintf("Done\r\n");
 	return 0;
 }
 
@@ -2391,26 +2391,26 @@ int mos_cmdFBMODE(char *p)
 {
 	char *value_str;
 	if (fb_driverversion() == 0) {
-		printf("EZ80 GPIO video driver not found\r\n");
+		kprintf("EZ80 GPIO video driver not found\r\n");
 		return 0;
 	}
 	// Get mode as argument
 	if (!mos_parseString(NULL, &value_str)) {
-		printf("Current mode: %d\r\n", (int8_t)fb_mode);
-		printf("Available modes:\r\n");
+		kprintf("Current mode: %d\r\n", (int8_t)fb_mode);
+		kprintf("Available modes:\r\n");
 
 		for (int mode = 0;; mode++) {
 			struct fbmodeinfo_t *minfo = fb_lookupmode(mode);
 			if (minfo == NULL) break;
-			printf("Mode %d: %dx%d", mode, minfo->width, minfo->height);
-			if (minfo->flags & FBMODE_FLAG_15KHZ) printf(" 15KHz");
-			if (minfo->flags & FBMODE_FLAG_31KHZ) printf(" VGA");
-			if (minfo->flags & FBMODE_FLAG_50HZ) printf(" 50Hz");
-			if (minfo->flags & FBMODE_FLAG_60HZ) printf(" 60Hz");
-			if (minfo->flags & FBMODE_FLAG_SLOW) printf(" (SLOW)");
-			printf("\r\n");
+			kprintf("Mode %d: %dx%d", mode, minfo->width, minfo->height);
+			if (minfo->flags & FBMODE_FLAG_15KHZ) kprintf(" 15KHz");
+			if (minfo->flags & FBMODE_FLAG_31KHZ) kprintf(" VGA");
+			if (minfo->flags & FBMODE_FLAG_50HZ) kprintf(" 50Hz");
+			if (minfo->flags & FBMODE_FLAG_60HZ) kprintf(" 60Hz");
+			if (minfo->flags & FBMODE_FLAG_SLOW) kprintf(" (SLOW)");
+			kprintf("\r\n");
 		}
-		printf("Mode -1: Disable GPIO video\n");
+		kprintf("Mode -1: Disable GPIO video\n");
 
 		return 0;
 	}
@@ -2419,10 +2419,10 @@ int mos_cmdFBMODE(char *p)
 	int ret = mos_FBMODE(mode);
 
 	if (ret == MOS_INVALID_PARAMETER) {
-		printf("Invalid mode\r\n");
+		kprintf("Invalid mode\r\n");
 		return 0;
 	} else if (ret == MOS_NOT_IMPLEMENTED) {
-		printf("EZ80 GPIO video driver not found\r\n");
+		kprintf("EZ80 GPIO video driver not found\r\n");
 		return 0;
 	} else {
 		return ret;

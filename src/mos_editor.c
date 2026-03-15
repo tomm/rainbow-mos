@@ -27,7 +27,7 @@
 #include "uart.h"
 #include "vkey.h"
 #include <ctype.h>
-#include <stdio.h>
+#include "printf.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -179,7 +179,7 @@ static void removeEditLine(char *buffer, int insertPos, int len)
 	// set buffer to be spaces up to len
 	memset(buffer, ' ', len);
 	// print the buffer to erase old line from screen
-	printf("%s", buffer);
+	kprintf("%s", buffer);
 	// clear the buffer
 	buffer[0] = 0;
 	gotoEditLineStart(len);
@@ -198,7 +198,7 @@ static bool handleHotkey(uint8_t fkey, char *buffer, int bufferLength, int inser
 			removeEditLine(buffer, insertPos, len);
 			buffer[0] = 0;
 			strbuf_append(buffer, bufferLength, hotkey_strings[fkey], bufferLength);
-			printf("%s", buffer);
+			kprintf("%s", buffer);
 		} else {
 			uint8_t prefixLength = wildcardPos - hotkey_strings[fkey];
 			uint8_t replacementLength = strlen(buffer);
@@ -227,7 +227,7 @@ static bool handleHotkey(uint8_t fkey, char *buffer, int bufferLength, int inser
 			removeEditLine(buffer, insertPos, len);
 			buffer[0] = 0;
 			strbuf_append(buffer, bufferLength, result, result_capacity);
-			printf("%s", buffer);
+			kprintf("%s", buffer);
 
 			umm_free(result);
 		}
@@ -262,7 +262,7 @@ void notify_tab_expansion(struct tab_expansion_context *ctx, enum TabExpansionTy
 
 		if (oom) {
 			// out-of-memory fallback. just print the expansion now
-			printf("%.*s ", fullExpansionLen, fullExpansion);
+			kprintf("%.*s ", fullExpansionLen, fullExpansion);
 		}
 	}
 	if (ctx->num_matches == 0) {
@@ -372,7 +372,7 @@ static void try_tab_expand_argument(struct tab_expansion_context *ctx)
 		term = search_prefix;
 	}
 
-	// printf("Path:\"%s\" Pattern:\"%s\"\r\n", path, term);
+	// kprintf("Path:\"%s\" Pattern:\"%s\"\r\n", path, term);
 
 	// Special case: '..'
 	if (strcmp(term, ".*") == 0) {
@@ -434,7 +434,7 @@ static void print_expansion_candidates(Vec *candidates)
 	const uint8_t maxCols = MAX(1, scrcols / longest_candidate);
 
 	// newline away from partial CMD entry
-	printf("\n");
+	kprintf("\n");
 	paginated_start(true);
 
 	uint8_t col = 0;
@@ -485,7 +485,7 @@ static void do_tab_complete(char *buffer, int buffer_len, int *out_InsertPos)
 		// do a full redraw of cmd line
 		putch('\r');
 		mos_print_prompt();
-		printf("%s", buffer);
+		kprintf("%s", buffer);
 		uint8_t insert_pos_adjust = strlen(buffer) - (*out_InsertPos);
 		while (insert_pos_adjust--) {
 			doLeftCursor();
@@ -502,13 +502,13 @@ static void do_tab_complete(char *buffer, int buffer_len, int *out_InsertPos)
 		}
 		const bool append_at_eol = (*out_InsertPos) == (int)strlen(buffer);
 		int chars_inserted = strbuf_insert(buffer, buffer_len, tab_ctx.expansion, *out_InsertPos);
-		printf("%.*s", chars_inserted, tab_ctx.expansion);
+		kprintf("%.*s", chars_inserted, tab_ctx.expansion);
 
 		*out_InsertPos = (*out_InsertPos) + chars_inserted;
 		if (!append_at_eol) {
 			// also need to redraw part of cmd after insert pos
 			int len_tail = strlen(&buffer[*out_InsertPos]);
-			printf("%.*s", len_tail, &buffer[*out_InsertPos]);
+			kprintf("%.*s", len_tail, &buffer[*out_InsertPos]);
 			// then move back to insert pos
 			while (len_tail--) {
 				doLeftCursor();
@@ -552,7 +552,7 @@ uint24_t mos_EDITLINE(char *buffer, int bufferLength, uint8_t flags)
 		buffer[0] = 0;
 		insertPos = 0;
 	} else {
-		printf("%s", buffer);	    // Otherwise output the current buffer
+		kprintf("%s", buffer);	    // Otherwise output the current buffer
 		insertPos = strlen(buffer); // And set the insertpos to the end
 	}
 
@@ -702,7 +702,7 @@ uint24_t mos_EDITLINE(char *buffer, int bufferLength, uint8_t flags)
 			}
 
 			if (lineChanged) {
-				printf("%s", buffer);	    // Output the buffer
+				kprintf("%s", buffer);	    // Output the buffer
 				insertPos = strlen(buffer); // Set cursor to end of string
 				len = strlen(buffer);
 			}

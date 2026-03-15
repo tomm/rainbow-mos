@@ -13,7 +13,6 @@
 
 #include <ctype.h>
 #include <defines.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -21,6 +20,7 @@
 #include "defines.h"
 #include "globals.h"
 #include "uart.h"
+#include "printf.h"
 
 const char *rtc_days[7][2] = {
 	{ "Sun", "Sunday" },
@@ -89,5 +89,5 @@ void rtc_unpack(uint8_t *buffer, vdp_time_t *t)
 //
 void rtc_formatDateTime(char buffer[static 64], vdp_time_t *t)
 {
-	snprintf(buffer, 64, "%s, %02d/%02d/%4d %02d:%02d:%02d", rtc_days[t->dayOfWeek][0], t->day, t->month + 1, t->year, t->hour, t->minute, t->second);
+	ksnprintf(buffer, 64, "%s, %02d/%02d/%4d %02d:%02d:%02d", rtc_days[t->dayOfWeek][0], t->day, t->month + 1, t->year, t->hour, t->minute, t->second);
 }

@@ -4,10 +4,11 @@
 #include "globals.h"
 #include "keyboard_buffer.h"
 #include "uart.h"
+#include "printf.h"
 #include <ctype.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 bool paginated_exit;
 static uint8_t paginated_row, paginated_col, paginated_page;
@@ -73,7 +74,7 @@ static void handle_newline()
 		if (paginated_enabled) {
 			// yellow in most modes. visible in all
 			set_color(get_primary_color());
-			printf("--Page %d-- (ESC/q/c/any key)", paginated_page);
+			kprintf("--Page %d-- (ESC/q/c/any key)", paginated_page);
 			kbuf_wait_keydown(&ev);
 			if (ev.ascii == 27 || ev.ascii == 'q' || ev.ascii == 'Q') {
 				paginated_exit = true;
@@ -132,12 +133,12 @@ void paginated_printf(const char *format, ...)
 {
 	va_list ap;
 	va_start(ap, format);
-	int size = vsnprintf(NULL, 0, format, ap);
+	int size = kvsnprintf(NULL, 0, format, ap);
 	if (size > 0) {
 		va_end(ap);
 		va_start(ap, format);
 		char buf[size + 1];
-		vsnprintf(buf, size, format, ap);
+		kvsnprintf(buf, size + 1, format, ap);
 		paginated_write(buf, size);
 	}
 	va_end(ap);

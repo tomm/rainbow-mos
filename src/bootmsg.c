@@ -3,7 +3,7 @@
 #include "globals.h"
 #include "uart.h"
 #include "version.h"
-#include <stdio.h>
+#include "printf.h"
 #include <string.h>
 
 static uint8_t quickrand(void)
@@ -19,7 +19,7 @@ static void rainbow_msg(char *msg)
 	const uint8_t fgcol = active_console->get_fg_color_index();
 	uint8_t i = quickrand() & (scrcolours - 1);
 	if (strcmp(msg, "Rainbow") != 0) {
-		printf("%s", msg);
+		kprintf("%s", msg);
 		return;
 	}
 	if (i == 0)
@@ -35,15 +35,15 @@ static void rainbow_msg(char *msg)
 
 void mos_bootmsg(void)
 {
-	printf("Agon ");
+	kprintf("Agon ");
 	rainbow_msg(VERSION_VARIANT);
-	printf(" MOS " VERSION_GITREF);
+	kprintf(" MOS " VERSION_GITREF);
 
 // Show version subtitle, if we have one
 #ifdef VERSION_SUBTITLE
-	printf(" ");
+	kprintf(" ");
 	rainbow_msg(VERSION_SUBTITLE);
 #endif
 
-	printf("\n\r\n\r");
+	kprintf("\n\r\n\r");
 }

@@ -5,7 +5,6 @@
 #include "mos.h"
 #include "timer.h"
 #include "uart.h"
-#include <stdio.h>
 
 // Get the current cursor position from the VPD
 //

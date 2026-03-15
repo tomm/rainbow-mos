@@ -31,7 +31,7 @@
 
 #include "defines.h"
 #include "ez80f92.h"
-#include <stdio.h>
+#include "printf.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,7 +115,7 @@ void mainloop(void)
 				mos_error(err);
 			}
 		} else {
-			printf("Escape\n\r");
+			kprintf("Escape\n\r");
 		}
 	}
 }

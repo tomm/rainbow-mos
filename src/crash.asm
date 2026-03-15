@@ -55,7 +55,7 @@ _on_crash:
 
 		ld hl,panic_msg
 		push hl
-		call _printf
+		call _kprintf
 		pop af
 		pop af
 		pop af

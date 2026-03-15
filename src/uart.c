@@ -26,7 +26,6 @@
 #include "ez80f92.h"
 #include "z80_io.h"
 #include <stddef.h>
-#include <stdio.h>
 
 // Set the Line Control Register for data, stop and parity bits
 //

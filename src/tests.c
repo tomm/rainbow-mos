@@ -1,6 +1,6 @@
 #include "tests.h"
 #include "defines.h"
-#include <stdio.h>
+#include "printf.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,7 +58,7 @@ static void malloc_grind()
 	struct mg_item_t *items = umm_malloc(sizeof(struct mg_item_t) * MG_MAX_ITEMS);
 
 	if (items == NULL) {
-		printf("Insufficient RAM for test\r\n");
+		kprintf("Insufficient RAM for test\r\n");
 		return;
 	}
 	memset(items, 0, sizeof(struct mg_item_t) * MG_MAX_ITEMS);
@@ -73,9 +73,9 @@ static void malloc_grind()
 			items[idx].num = num;
 			if (items[idx].ptr) {
 				malloc_grind_fill(&items[idx]);
-				printf("+");
+				kprintf("+");
 			} else {
-				printf("x");
+				kprintf("x");
 			}
 		} else {
 			if (!malloc_grind_validate(&items[idx])) {
@@ -84,7 +84,7 @@ static void malloc_grind()
 			}
 			umm_free(items[idx].ptr);
 			items[idx].ptr = 0;
-			printf("-");
+			kprintf("-");
 		}
 	}
 cleanup:
@@ -96,9 +96,9 @@ cleanup:
 	}
 	umm_free(items);
 	if (status) {
-		printf("\r\nmalloc grind test passed!\r\n");
+		kprintf("\r\nmalloc grind test passed!\r\n");
 	} else {
-		printf("\r\nmalloc grind test FAILED!\r\n");
+		kprintf("\r\nmalloc grind test FAILED!\r\n");
 	}
 }
 
