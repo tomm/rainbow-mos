@@ -254,9 +254,11 @@ NPF_VISIBILITY int npf_vpprintf(npf_putc pc,
     #pragma GCC diagnostic ignored "-Wcovered-switch-default"
     #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
     #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+/*
     #ifndef __APPLE__
       #pragma GCC diagnostic ignored "-Wunsafe-buffer-usage"
     #endif
+ */
   #elif NPF_GCC_PAST_4_6
     #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
   #endif
