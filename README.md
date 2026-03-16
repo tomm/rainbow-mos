@@ -10,7 +10,7 @@ Rainbow MOS binaries can be flashed onto the Agon EZ80 using
 [Agon Flash](https://github.com/AgonPlatform/agon-flash).
 
 Rainbow MOS's unique features are:
- - Compiled with modern AgonDev LLVM toolchain, not Zilog ZDS
+ - Compiled with modern AgonDev (0.20+) LLVM toolchain, not Zilog ZDS
  - A buffered keyboard event API that solves the issues with all the other MOS
    keyboard APIs
  - Support for framebuffer video on the eZ80 side of the Agon (with

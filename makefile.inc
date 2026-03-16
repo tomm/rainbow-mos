@@ -15,7 +15,7 @@ TARGET=ez80-none-elf
 # Tools and flags
 ## Compiler
 CC=$(TOOLBINDIR)/ez80-none-elf-clang
-CFLAGS=-target $(TARGET) -Oz -Wa,-march=$(ARCH) -Wextra -Wno-unused-parameter -DVERSION_GITREF="\"$(VERSION_GITREF)\"" -I src_fatfs -I src_umm_malloc -I src -I $(INCLUDEDIR) -fcolor-diagnostics
+CFLAGS=-mllvm -z80-gas-style -mllvm -z80-print-zero-offset -target $(TARGET) -Oz -Wa,-march=$(ARCH) -Wextra -Wno-unused-parameter -DVERSION_GITREF="\"$(VERSION_GITREF)\"" -I src_fatfs -I src_umm_malloc -I src -I $(INCLUDEDIR) -fcolor-diagnostics
 
 ifeq ($(DEBUG),1)
 	CFLAGS+=-DDEBUG
