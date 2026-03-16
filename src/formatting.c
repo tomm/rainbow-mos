@@ -129,17 +129,15 @@ void paginated_write(const char *buf, int len)
 	}
 }
 
+static void _paginated_putch_wrapper(int c, void *data)
+{
+	(void)data;
+	paginated_putch(c);
+}
+
 void paginated_printf(const char *format, ...)
 {
 	va_list ap;
 	va_start(ap, format);
-	int size = kvsnprintf(NULL, 0, format, ap);
-	if (size > 0) {
-		va_end(ap);
-		va_start(ap, format);
-		char buf[size + 1];
-		kvsnprintf(buf, size + 1, format, ap);
-		paginated_write(buf, size);
-	}
-	va_end(ap);
+	npf_vpprintf(&_paginated_putch_wrapper, NULL, format, ap);
 }
