@@ -2410,7 +2410,7 @@ int mos_cmdFBMODE(char *p)
 			if (minfo->flags & FBMODE_FLAG_SLOW) kprintf(" (SLOW)");
 			kprintf("\r\n");
 		}
-		kprintf("Mode -1: Disable GPIO video\n");
+		kprintf("Mode -1: Disable GPIO video\r\n");
 
 		return 0;
 	}
