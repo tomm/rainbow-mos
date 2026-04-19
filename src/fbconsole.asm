@@ -44,6 +44,8 @@ FLAG_LOGO_DISMISSED: .equ 4
 
 		.text
 
+pre_image_callback_off:
+		reti.lil
 pre_image_callback:
 		push af
 		push bc
@@ -114,6 +116,10 @@ _start_fbterm:
 		ld a,2
 		rst.lil 0x20
 
+		; stop video output, if active
+		ld a,4
+		rst.lil 0x20
+
 		; Clear key event count to enable dismissing logo animation
 		xor a
 		ld (_keycount),a
@@ -125,8 +131,8 @@ _start_fbterm:
 		ld (iy+1),hl
 		ld hl,(ix+12)	; fb_scanline_offsets
 		ld (iy+4),hl
-		ld hl,pre_image_callback
-		ld (iy+7),hl
+		ld hl,pre_image_callback_off
+		ld (iy+7),hl	; pre_image_callback: disabled until init all done
 
 		; set mode
 		ld a,1
@@ -158,6 +164,10 @@ _start_fbterm:
 		; Hack -- mark _vdp_protocol_flags because BBC BASIC checks it
 		ld hl,_vpd_protocol_flags
 		set 4,(hl)
+
+		; Finally set pre-image callback (once all work is done, to avoid race conditions)
+		ld hl,pre_image_callback
+		ld (iy+7),hl
 
 		pop ix
 		ld hl,0
