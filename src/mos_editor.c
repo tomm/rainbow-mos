@@ -434,7 +434,7 @@ static void print_expansion_candidates(Vec *candidates)
 	const uint8_t maxCols = MAX(1, scrcols / longest_candidate);
 
 	// newline away from partial CMD entry
-	kprintf("\n");
+	kprintf("\r\n");
 	paginated_start(true);
 
 	uint8_t col = 0;
