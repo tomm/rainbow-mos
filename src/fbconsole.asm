@@ -347,6 +347,12 @@ _vdu23_arg2:
 		jp z,2f
 		jp to_vdu_base_state
 	1:
+		; write term size to vdp vars again. it could 
+		; have been overwritten by a stdout switch to vdp and back
+		ld a,(term_width)
+		ld (_scrcols),a
+		ld a,(term_height)
+		ld (_scrrows),a
 		; mark _vdp_protocol_flags mode bit
 		ld hl,_vpd_protocol_flags
 		set 4,(hl)
@@ -671,6 +677,7 @@ do_scroll:
 		dec a
 		ld e,a
 		call .clear_line
+		ret
 
 ; Input:
 ;   a: character to draw
