@@ -36,6 +36,12 @@ vdp_fn_args:	.ds 1
 fbterm_flags:	.ds 1
 _fb_base: 	.ds 3
 cursor_mutex:	.ds 1	; 1 when free, 0 when held
+; struct font same as fbfont_0, fbfont_1
+fbfont:
+	fbfont_width:	.ds 1
+	fbfont_height:	.ds 1
+	fbfont_bitmap:	.ds 3
+
 fbdata_end:
 
 FLAG_IS_CURSOR_VIS: .equ 1
@@ -43,6 +49,14 @@ FLAG_DELAYED_SCROLL: .equ 2
 FLAG_LOGO_DISMISSED: .equ 4
 
 		.text
+
+; Fonts. width, height, font binary
+fbfont_0:	.db 4
+		.db 6
+		.d24 font_4x6
+fbfont_1:	.db 6
+		.db 8
+		.d24 font_6x8
 
 pre_image_callback_off:
 		reti.lil
@@ -209,19 +223,35 @@ _fbconsole_rst10_handler:
 
 
 term_init:	; size the terminal. needed after mode change
+		push ix
 		push iy
 		ld a,3
 		rst.lil 0x20
 
+		; set font (wider font for screen widths > 255)
 		ld hl,(iy+6)	; screen.width
-		ld de, FONT_WIDTH
+		xor a
+		or h
+		ld hl,fbfont_0
+		jr z,1f
+		ld hl,fbfont_1
+	1:	ld de,fbfont
+		ld bc,5
+		ldir
+
+		ld hl,(iy+6)	; screen.width
+		ld de,0
+		ld a,(fbfont_width)
+		ld e,a
 		call udiv24
 		ld a,e
 		ld (term_width),a
 		ld (_scrcols),a	; also set core MOS value
 
 		ld hl,(iy+9)	; screen.height
-		ld de, FONT_HEIGHT
+		ld de,0
+		ld a,(fbfont_height)
+		ld e,a
 		call udiv24
 		ld a,e
 		ld (term_height),a
@@ -242,6 +272,7 @@ term_init:	; size the terminal. needed after mode change
 		ld (vdp_active_fn),hl
 
 		pop iy
+		pop ix
 		ret
 
 term_putch:	; character in `a`
@@ -385,10 +416,11 @@ move_cursor_left:
 		ld (_fb_curs_x),a
 		; fast update of cursor pointer
 		ld hl,(fb_curs_ptr)
-		dec hl
-		dec hl
-		dec hl
-		dec hl
+		ld de,0
+		ld a,(fbfont_width)
+		ld e,a
+		and a
+		sbc hl,de
 		ld (fb_curs_ptr),hl
 		ret
 	.move_up:
@@ -418,10 +450,10 @@ move_cursor_right:
 		jp z,1f
 		; fast update of cursor pointer
 		ld hl,(fb_curs_ptr)
-		inc hl
-		inc hl
-		inc hl
-		inc hl
+		ld de,0
+		ld a,(fbfont_width)
+		ld e,a
+		add hl,de
 		ld (fb_curs_ptr),hl
 		ret
 	1:
@@ -596,26 +628,17 @@ _interpret_char:
 		jp .end
 
 	.clear_line:	; terminal line in de
+		push de
 		; number of bytes to wipe in bc
 		ld hl,(iy+6)	; screen.width
-		push de
-		add hl,hl	; FONT_HEIGHT is 6
-		push hl
-		pop de
-		add hl,hl
-		add hl,de	; hl=screen.width*6
+		ld de,0
+		ld a,(fbfont_height)
+		ld e,a
+		call umul24	; hl=screen.width*font.height
 		push hl
 		pop bc
-		
-		; find character y position
-		ld hl,(iy+6)	; screen.width
-		add hl,hl	; FONT_HEIGHT is 6
-		push hl
 		pop de
-		add hl,hl
-		add hl,de	; hl=screen.width*6
-		pop de
-		call umul24	; hl=screen.width*8*line_no
+		call umul24	; hl=screen.width*font.height*line_no
 		ld de,(_fb_base)
 		add hl,de
 		xor a
@@ -648,25 +671,23 @@ do_scroll_if_needed:
 
 do_scroll:
 		call fb_get_modeinfo
-		; bc = screen.width * (screen.height-6)
-		ld hl,(iy+6)	; screen.width
-		ld de,(iy+9)	; screen.height
-		dec de
-		dec de
-		dec de
-		dec de
-		dec de
-		dec de
+		; bc = screen.width * (screen.height-font.height)
+		ld de,(iy+6)	; screen.width
+		ld hl,(iy+9)	; screen.height
+		ld bc,0
+		ld a,(fbfont_height)
+		ld c,a
+		or a
+		sbc hl,bc
 		call umul24
 		push hl
 		pop bc
 
 		ld hl,(iy+6)	; screen.width
-		add hl,hl	; FONT_HEIGHT is 6
-		push hl
-		pop de
-		add hl,hl
-		add hl,de	; hl=screen.width*6
+		ld de,0
+		ld a,(fbfont_height)
+		ld e,a
+		call umul24	; hl=screen.width*6
 		ld de,(_fb_base)
 		add hl,de
 
@@ -695,12 +716,13 @@ raw_draw_char:
 		pop af
 		; seek to character in font
 		ld b,a
-		ld c,6
+		ld a,(fbfont_height)
+		ld c,a
 		mlt bc
-		ld hl,font_4x6
+		ld hl,(fbfont_bitmap)
 		add hl,bc
 		; draw it
-		ld b,FONT_HEIGHT
+		ld b,a	; fbfont_height
 		ld a,(_fbterm_fg)
 		ld d,a
 		ld a,(_fbterm_bg)
@@ -708,27 +730,20 @@ raw_draw_char:
 	.lineloop:
 		ld c,(hl)
 		inc hl
-
-		rlc c
+		push hl
+		lea hl,ix+0		; font bitmap ptr
+		push bc
+		ld a,(fbfont_width)
+		ld b,a
+	1:	rlc c
 		ld a,e
-		jr nc,1f
+		jr nc,2f
 		ld a,d
-	1:	ld (ix+0),a
-		rlc c
-		ld a,e
-		jr nc,1f
-		ld a,d
-	1:	ld (ix+1),a
-		rlc c
-		ld a,e
-		jr nc,1f
-		ld a,d
-	1:	ld (ix+2),a
-		rlc c
-		ld a,e
-		jr nc,1f
-		ld a,d
-	1:	ld (ix+3),a
+	2:	ld (hl),a
+		inc hl
+		djnz 1b
+		pop bc
+		pop hl
 
 		push de
 		ld de,(iy+6)
@@ -792,10 +807,12 @@ toggle_cursor:
 		xor FLAG_IS_CURSOR_VIS
 		ld (fbterm_flags),a
 		ld hl,(fb_curs_ptr)
-		ld b,FONT_HEIGHT
+		ld a,(fbfont_height)
+		ld b,a
 	.yloop:
 		push bc
-		ld b,FONT_WIDTH
+		ld a,(fbfont_width)
+		ld b,a
 		push hl
 	.xloop:
 		ld a,(hl)
@@ -825,17 +842,17 @@ update_curs_ptr:
 		ret
 
 get_hl_ptr_cursor_pos:
+		push ix
 		call fb_get_modeinfo	; iy
 	
 		; find character y position
 		ld hl,(iy+6)	; screen.width
-		add hl,hl	; FONT_HEIGHT is 6
-		push hl
-		pop de
-		add hl,hl
-		add hl,de	; hl=screen.width*6
+		ld de,0
+		ld a,(fbfont_height)
+		ld e,a
+		call umul24	; hl=screen.width*font.height
 
-		; hl=screen.width*8*_fb_curs_y
+		; hl=screen.width*font.height*_fb_curs_y
 		ld de,0
 		ld a,(_fb_curs_y)
 		ld e,a
@@ -844,7 +861,8 @@ get_hl_ptr_cursor_pos:
 		; seek x character pos in framebuffer
 		ld a,(_fb_curs_x)
 		ld b,a
-		ld c,FONT_WIDTH
+		ld a,(fbfont_width)
+		ld c,a
 		mlt bc
 		add hl,bc
 
@@ -852,6 +870,7 @@ get_hl_ptr_cursor_pos:
 		ld de,(_fb_base)
 		add hl,de
 
+		pop ix
 		ret
 
 _fb_driverversion:
@@ -868,9 +887,6 @@ _fb_lookupmode:
 		rst.lil 0x20
 		pop ix
 		ret
-
-font_4x6:
-		.include "font_4x6.inc"
 
 do_splashmsg:
 		ld hl,splashmsg_1
@@ -990,3 +1006,7 @@ LOGO_W .equ 16
 LOGO_H .equ 24
 logo:
 		.incbin "logo_16x24.raw"
+font_4x6:
+		.include "font_4x6.inc"
+font_6x8:
+		.include "font_6x8.inc"
