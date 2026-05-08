@@ -731,7 +731,7 @@ raw_draw_char:
 		ld c,(hl)
 		inc hl
 		push hl
-		lea hl,ix+0		; font bitmap ptr
+		lea hl,ix+0		; framebuffer write position
 		push bc
 		ld a,(fbfont_width)
 		ld b,a
