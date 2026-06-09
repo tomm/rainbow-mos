@@ -2128,13 +2128,13 @@ uint24_t mos_FGETC(uint8_t fh)
 	FRESULT fr;
 	FIL *fo;
 	UINT br;
-	char c;
+	uint8_t c;
 
 	fo = (FIL *)mos_GETFIL(fh);
 	if (fo > 0) {
 		fr = f_read(fo, &c, 1, &br);
 		if (fr == FR_OK) {
-			return c | (fat_EOF(fo) << 8);
+			return	((uint24_t)c) | ((uint24_t)fat_EOF(fo) << 8);
 		}
 	}
 	return 0;
