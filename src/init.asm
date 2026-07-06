@@ -224,6 +224,10 @@ _set_vector:		PUSH	IY
 			PUSH	AF
 			SAVEIMASK
 
+			; Is the ISR in ROM? If so, skip patching
+			LD	A, (IY + 11) ; top byte of address
+			CP	4
+			JR	C,1f
 			; patch ISR to remove initial `di` if present.
 			LD	HL, (IY + 9)			; BC is isr address
 			LD	A,0xf3 ; di
