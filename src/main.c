@@ -130,7 +130,9 @@ int main(void)
 	init_spi();			   // Initialise SPI comms for the SD card interface
 	init_UART0();			   // Initialise UART0 for the ESP32 interface
 	init_UART1();			   // Initialise UART1
+#ifdef FEAT_FRAMEBUFFER
 	init_fbterm();
+#endif /* FEAT_FRAMEBUFFER */
 	asm volatile("ei");
 
 	if (!wait_ESP32(1152000)) {	   // Try to lock onto the ESP32 at maximum rate

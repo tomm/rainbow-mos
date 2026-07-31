@@ -5,6 +5,7 @@
 #include "mos.h"
 #include "timer.h"
 #include "uart.h"
+#include "config.h"
 
 // Get the current cursor position from the VPD
 //
@@ -51,6 +52,7 @@ uint8_t vdp_get_bg_color_index()
 	return vdpReadPalette(129);
 }
 
+#ifdef FEAT_FRAMEBUFFER
 void fbGetCursorPos()
 {
 	cursorX = fb_curs_x;
@@ -81,9 +83,7 @@ uint8_t fb_get_bg_color_index()
 	}
 	return 0;
 }
-
-extern void UART0_serial_TX();
-extern void fbconsole_putch();
+#endif /* FEAT_FRAMEBUFFER */
 
 struct console_driver_t vdp_console = {
 	.get_cursor_pos = &vdpGetCursorPos,
@@ -92,15 +92,18 @@ struct console_driver_t vdp_console = {
 	.get_bg_color_index = &vdp_get_bg_color_index,
 };
 
+#ifdef FEAT_FRAMEBUFFER
 struct console_driver_t fb_console = {
 	.get_cursor_pos = &fbGetCursorPos,
 	.get_mode_information = &fbGetModeInformation,
 	.get_fg_color_index = &fb_get_fg_color_index,
 	.get_bg_color_index = &fb_get_bg_color_index,
 };
+#endif /* FEAT_FRAMEBUFFER */
 
 struct console_driver_t *active_console = &vdp_console;
 
+#ifdef FEAT_FRAMEBUFFER
 void console_enable_fb()
 {
 	active_console = &fb_console;
@@ -115,6 +118,7 @@ void console_enable_fb()
 	    "pop hl\n"
 	    "pop de\n");
 }
+#endif /* FEAT_FRAMEBUFFER */
 
 void console_enable_vdp()
 {

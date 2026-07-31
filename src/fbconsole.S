@@ -15,6 +15,10 @@
 		.global _fbconsole_rst10_handler
 		.global _fb_vdp_palette
 
+#include "config.h"
+
+#ifdef FEAT_FRAMEBUFFER
+
 FONT_WIDTH: .equ 4
 FONT_HEIGHT: .equ 6
 
@@ -1010,3 +1014,5 @@ font_4x6:
 		.include "font_4x6.inc"
 font_6x8:
 		.include "font_6x8.inc"
+
+#endif /* FEAT_FRAMEBUFFER */

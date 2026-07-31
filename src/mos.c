@@ -56,10 +56,10 @@
 #include "uart.h"
 #ifdef FEAT_FRAMEBUFFER
 #include "fbconsole.h"
+#endif								     /* FEAT_FRAMEBUFFER */
 #include "formatting.h"
 #include "globals.h"
 #include "vec.h"
-#endif								     /* FEAT_FRAMEBUFFER */
 #ifdef DEBUG
 #include "tests.h"
 #endif								     /* DEBUG */
@@ -101,7 +101,9 @@ static const t_mosCommand mosCommands[] = {
 	{ "ECHO", &mos_cmdECHO, HELP_ECHO_ARGS, HELP_ECHO },
 	{ "ERASE", &mos_cmdDEL, HELP_DELETE_ARGS, HELP_DELETE },
 	{ "EXEC", &mos_cmdEXEC, HELP_EXEC_ARGS, HELP_EXEC },
+#ifdef FEAT_FRAMEBUFFER
 	{ "FBMODE", &mos_cmdFBMODE, HELP_FBMODE_ARGS, HELP_FBMODE },
+#endif /* FEAT_FRAMEBUFFER */
 	{ "HELP", &mos_cmdHELP, HELP_HELP_ARGS, HELP_HELP },
 	{ "JMP", &mos_cmdJMP, HELP_JMP_ARGS, HELP_JMP },
 	{ "LOAD", &mos_cmdLOAD, HELP_LOAD_ARGS, HELP_LOAD },
@@ -1096,12 +1098,16 @@ int mos_cmdMEM(char *ptr)
 	int try_len = HEAP_LEN;
 
 	kprintf("ROM      &000000-&01ffff     %2d%% used\r\n", ((int)__rodata_end + (int)__data_len) / 1311);
+#ifdef FEAT_FRAMEBUFFER
 	if (fb_mode != 255) {
 		kprintf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)fb_base - 1, (int)fb_base - 0x40000);
 		kprintf("FRAMEBUF &%06x-&%06x %6d bytes\r\n", (uint24_t)fb_base, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - (int)fb_base);
 	} else {
 		kprintf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - 0x40000);
 	}
+#else
+	kprintf("USER:LO  &%06x-&%06x %6d bytes\r\n", 0x40000, (int)_stack - SPL_STACK_SIZE - 1, (int)_stack - SPL_STACK_SIZE - 0x40000);
+#endif /* FEAT_FRAMEBUFFER */
 	kprintf("STACK24  &%06x-&%06x %6d bytes\r\n", (int)_stack - SPL_STACK_SIZE, (int)_stack - 1, SPL_STACK_SIZE);
 	// data and bss together
 	kprintf("MOS:DATA &%06x-&%06x %6d bytes\r\n", (int)__data_start, (int)__heapbot - 1, (int)__heapbot - (int)__data_start);
@@ -2387,6 +2393,7 @@ int mos_cmdSIDELOAD(char *p)
 	return 0;
 }
 
+#ifdef FEAT_FRAMEBUFFER
 int mos_cmdFBMODE(char *p)
 {
 	char *value_str;
@@ -2462,3 +2469,4 @@ uint24_t mos_FBMODE(int req_mode)
 
 	return start_fbterm(set_mode, fb_base, fb_scanline_offsets);
 }
+#endif /* FEAT_FRAMEBUFFER */

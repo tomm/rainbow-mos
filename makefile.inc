@@ -42,7 +42,7 @@ BINARY=$(BINDIR)/$(NAME).bin
 
 # Automatically get all object names from sourcefiles
 OBJS=$(patsubst $(SRCDIR)/%.asm, $(OBJDIR)/%.o, $(wildcard $(SRCDIR)/*.asm)) \
-	 $(patsubst $(SRCDIR)/%.s,   $(OBJDIR)/%.o, $(wildcard $(SRCDIR)/*.s)) \
+	 $(patsubst $(SRCDIR)/%.S,   $(OBJDIR)/%.o, $(wildcard $(SRCDIR)/*.S)) \
 	 $(patsubst $(SRCDIR)/%.src, $(OBJDIR)/%.o, $(wildcard $(SRCDIR)/*.src)) \
 	 $(patsubst src_fatfs/%.c,   src_fatfs/%.o, $(wildcard src_fatfs/*.c)) \
 	 $(patsubst src_umm_malloc/%.c,   src_umm_malloc/%.o, $(wildcard src_umm_malloc/*.c)) \

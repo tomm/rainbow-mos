@@ -1,30 +1,4 @@
-;
-; Title:	AGON MOS - API code
-; Author:	Dean Belfield
-; Created:	24/07/2022
-; Last Updated:	10/11/2023
-;
-; Modinfo:
-; 03/08/2022:	Added a handful of MOS API calls and stubbed FatFS calls
-; 05/08/2022:	Added mos_FEOF, saved affected registers in fopen, fclose, fgetc, fputc and feof
-; 09/08/2022:	mos_api_sysvars now returns pointer to _sysvars
-; 05/09/2022:	Added mos_REN
-; 24/09/2022:	Error codes returned for MOS commands
-; 13/10/2022:	Added mos_OSCLI and supporting code
-; 20/10/2022:	Tweaked error handling
-; 13/03/2023:	Renamed keycode to keyascii, fixed mos_api_getkey, added parameter to mos_api_dir
-; 15/03/2023:	Added mos_api_copy, mos_api_getrtc, mos_api_setrtc
-; 21/03/2023:	Added mos_api_setintvector
-; 24/03/2023:	Fixed bugs in mos_api_setintvector
-; 28/03/2023:	Function mos_api_setintvector now only accepts a 24-bit pointer
-; 29/03/2023:	Added mos_api_uopen, mos_api_uclose, mos_api_ugetc, mos_api_uputc
-; 14/04/2023:	Added ffs_api_fopen, ffs_api_fclose, ffs_api_stat, ffs_api_fread, ffs_api_fwrite, ffs_api_feof, ffs_api_flseek
-; 15/04/2023:	Added mos_api_getfil, mos_api_fread, mos_api_fwrite and mos_api_flseek
-; 30/05/2023:	Fixed mos_api_fgetc to set carry if at end of file
-; 03/08/2023:	Added mos_api_setkbvector
-; 10/08/2023:	Added mos_api_getkbmap
-; 10/11/2023:	Added mos_api_i2c_close, mos_api_i2c_open, mos_api_i2c_read, mos_api_i2c_write
-
+#include "config.h"
 
 			.ASSUME	ADL = 1
 			
@@ -213,8 +187,13 @@ mos_api_block1_start:	DW	mos_api_getkey		; 0x00
 			DW  mos_api_inject_uart0_rx_byte ; 0x60
 			DW  mos_api_setresetvector  ; 0x61
 			DW  mos_api_pollkeyboardevent ; 0x62
+#ifdef FEAT_FRAMEBUFFER
 			DW  mos_api_set_fbmode ; 0x63
 			DW  mos_api_set_stdout ; 0x64
+#else
+			DW  mos_api_not_implemented ; 0x63
+			DW  mos_api_not_implemented ; 0x64
+#endif
 			DW  mos_api_not_implemented ; 0x65
 			DW  mos_api_not_implemented ; 0x66
 			DW  mos_api_not_implemented ; 0x67
@@ -867,11 +846,13 @@ mos_api_pollkeyboardevent:
 ;  B == 0 -> Set to mode number in C
 ;  B == 1 -> Restore (re-init) current fb_mode
 ;  C = Mode number to set (if B==0)
+#ifdef FEAT_FRAMEBUFFER
 mos_api_set_fbmode:
 			PUSH	BC
 			CALL	_mos_FBMODE
 			POP	BC
 			RET
+#endif /* FEAT_FRAMEBUFFER */
 
 ; Set the device that rst 0x10/rst 0x18 output to
 ; Input:
@@ -881,6 +862,7 @@ mos_api_set_fbmode:
 ;  C == 2 -> Set output to fbconsole (GPIO video)
 ; Output:
 ;  A = 0 or error code
+#ifdef FEAT_FRAMEBUFFER
 mos_api_set_stdout:
 			LD A,C
 			OR A
@@ -895,6 +877,7 @@ mos_api_set_stdout:
 			RET
 		2:	LD A,26  ; MOS_INVALID_PARAMETER
 			RET
+#endif /* FEAT_FRAMEBUFFER */
 
 ; Open the I2C bus as master
 ;   C: Frequency ID
