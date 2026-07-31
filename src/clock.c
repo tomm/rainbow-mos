@@ -19,8 +19,8 @@
 #include "clock.h"
 #include "defines.h"
 #include "globals.h"
-#include "uart.h"
 #include "printf.h"
+#include "uart.h"
 
 const char *rtc_days[7][2] = {
 	{ "Sun", "Sunday" },

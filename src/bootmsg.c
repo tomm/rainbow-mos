@@ -1,9 +1,9 @@
 #include "console.h"
 #include "formatting.h"
 #include "globals.h"
+#include "printf.h"
 #include "uart.h"
 #include "version.h"
-#include "printf.h"
 #include <string.h>
 
 static uint8_t quickrand(void)

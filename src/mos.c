@@ -39,8 +39,8 @@
 
 #include "defines.h"
 #include "ez80f92.h"
-#include <ctype.h>
 #include "printf.h"
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1144,7 +1144,8 @@ int mos_cmdMEMDUMP(char *ptr)
 		len = 0x100;
 	}
 	size_t i = 0;
-	const int width = scrcols <= 40 ? 8 : scrcols <= 60 ? 12 : 16;
+	const int width = scrcols <= 40 ? 8 : scrcols <= 60 ? 12
+							    : 16;
 
 	paginated_start(true);
 
@@ -2140,7 +2141,7 @@ uint24_t mos_FGETC(uint8_t fh)
 	if (fo > 0) {
 		fr = f_read(fo, &c, 1, &br);
 		if (fr == FR_OK) {
-			return	((uint24_t)c) | ((uint24_t)fat_EOF(fo) << 8);
+			return ((uint24_t)c) | ((uint24_t)fat_EOF(fo) << 8);
 		}
 	}
 	return 0;

@@ -22,12 +22,12 @@
 #include "globals.h"
 #include "keyboard_buffer.h"
 #include "mos.h"
+#include "printf.h"
 #include "strings.h"
 #include "timer.h"
 #include "uart.h"
 #include "vkey.h"
 #include <ctype.h>
-#include "printf.h"
 #include <stdlib.h>
 #include <string.h>
 

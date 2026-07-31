@@ -132,7 +132,7 @@ int main(void)
 	init_UART1();			   // Initialise UART1
 #ifdef FEAT_FRAMEBUFFER
 	init_fbterm();
-#endif /* FEAT_FRAMEBUFFER */
+#endif					   /* FEAT_FRAMEBUFFER */
 	asm volatile("ei");
 
 	if (!wait_ESP32(1152000)) {	   // Try to lock onto the ESP32 at maximum rate
@@ -169,8 +169,8 @@ int main(void)
 	putch(7);	   // Startup beep
 	editHistoryInit(); // Initialise the command history
 
-// Load the autoexec.bat config file
-//
+			   // Load the autoexec.bat config file
+	//
 	{
 		int err = mos_EXEC("autoexec.txt", cmd, sizeof cmd);	// Then load and run the config file
 		if (err > 0 && err != FR_NO_FILE) {

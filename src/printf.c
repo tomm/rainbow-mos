@@ -7,12 +7,12 @@ extern int putch(int);
 
 static void putchar_wrapper(int c, void *userdata)
 {
-  putch(c);
+	putch(c);
 }
 
 void kprintf(const char *format, ...)
 {
 	va_list ap;
 	va_start(ap, format);
-  npf_vpprintf(&putchar_wrapper, NULL, format, ap);
+	npf_vpprintf(&putchar_wrapper, NULL, format, ap);
 }

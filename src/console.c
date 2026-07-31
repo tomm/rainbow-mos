@@ -1,11 +1,11 @@
 #include "console.h"
+#include "config.h"
 #include "defines.h"
 #include "fbconsole.h"
 #include "globals.h"
 #include "mos.h"
 #include "timer.h"
 #include "uart.h"
-#include "config.h"
 
 // Get the current cursor position from the VPD
 //

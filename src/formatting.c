@@ -3,12 +3,12 @@
 #include "defines.h"
 #include "globals.h"
 #include "keyboard_buffer.h"
-#include "uart.h"
 #include "printf.h"
+#include "uart.h"
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 bool paginated_exit;
 static uint8_t paginated_row, paginated_col, paginated_page;
