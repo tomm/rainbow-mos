@@ -171,14 +171,12 @@ int main(void)
 
 // Load the autoexec.bat config file
 //
-#if enable_config == 1
 	{
 		int err = mos_EXEC("autoexec.txt", cmd, sizeof cmd);	// Then load and run the config file
 		if (err > 0 && err != FR_NO_FILE) {
 			mos_error(err);
 		}
 	}
-#endif
 
 #ifdef FEAT_FRAMEBUFFER
 	{
