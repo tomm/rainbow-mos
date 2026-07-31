@@ -1138,7 +1138,7 @@ int mos_cmdMEMDUMP(char *ptr)
 		len = 0x100;
 	}
 	size_t i = 0;
-	const int width = scrcols <= 40 ? 8 : 16;
+	const int width = scrcols <= 40 ? 8 : scrcols <= 60 ? 12 : 16;
 
 	paginated_start(true);
 
@@ -1153,7 +1153,7 @@ int mos_cmdMEMDUMP(char *ptr)
 			putch(27);
 			putch(*(uint8_t *)(addr + i + c));
 		}
-		paginated_printf("\r\n");
+		paginated_printf("\n");
 		if (paginated_exit) break;
 		i += width;
 	}
