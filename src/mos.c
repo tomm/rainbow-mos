@@ -103,6 +103,7 @@ static const t_mosCommand mosCommands[] = {
 	{ "EXEC", &mos_cmdEXEC, HELP_EXEC_ARGS, HELP_EXEC },
 #ifdef FEAT_FRAMEBUFFER
 	{ "FBMODE", &mos_cmdFBMODE, HELP_FBMODE_ARGS, HELP_FBMODE },
+	{ "FONT", &mos_cmdFBFONT, HELP_FBFONT_ARGS, HELP_FBFONT },
 #endif /* FEAT_FRAMEBUFFER */
 	{ "HELP", &mos_cmdHELP, HELP_HELP_ARGS, HELP_HELP },
 	{ "JMP", &mos_cmdJMP, HELP_JMP_ARGS, HELP_JMP },
@@ -1144,7 +1145,7 @@ int mos_cmdMEMDUMP(char *ptr)
 		len = 0x100;
 	}
 	size_t i = 0;
-	const int width = scrcols <= 40 ? 8 : scrcols <= 60 ? 12
+	const int width = scrcols <= 30 ? 4 : scrcols <= 40 ? 8 : scrcols <= 60 ? 12
 							    : 16;
 
 	paginated_start(true);
@@ -2395,6 +2396,18 @@ int mos_cmdSIDELOAD(char *p)
 }
 
 #ifdef FEAT_FRAMEBUFFER
+int mos_cmdFBFONT(char *p)
+{
+	char *value_str;
+
+	if (!mos_parseString(NULL, &value_str)) return 0;
+
+	int font = strtol(value_str, NULL, 10);
+	fbterm_setfont(font ? 1 : 0);
+
+	return 0;
+}
+
 int mos_cmdFBMODE(char *p)
 {
 	char *value_str;

@@ -2,6 +2,7 @@
 		.global _init_fbterm
 		.global _start_fbterm
 		.global _stop_fbterm
+		.global _fbterm_setfont
 		.global _fbterm_width
 		.global _fbterm_height
 		.global _fbterm_fg
@@ -53,6 +54,8 @@ FLAG_DELAYED_SCROLL: .equ 2
 FLAG_LOGO_DISMISSED: .equ 4
 
 		.text
+
+sizeof_fontstruct: .equ 5
 
 ; Fonts. width, height, font binary
 fbfont_0:	.db 4
@@ -162,8 +165,6 @@ _start_fbterm:
 		ld (hl),1
 
 		call term_init
-		; clear screen
-		call fb_cls
 
 		; Hook fbconsole to rst10
 		call _console_enable_fb
@@ -226,22 +227,26 @@ _fbconsole_rst10_handler:
 		ret.lil
 
 
-term_init:	; size the terminal. needed after mode change
+_fbterm_setfont:
 		push ix
+		ld ix,0
+		add ix,sp
+
+		ld b,(ix+6)	; font number
+		ld c,sizeof_fontstruct
+		mlt bc
+	
+		ld hl,fbfont_0
+		add hl,bc
+
+		ld de,fbfont
+		ld bc,sizeof_fontstruct
+		ldir
+
+		; recalculate term dimensions
 		push iy
 		ld a,3
 		rst.lil 0x20
-
-		; set font (wider font for screen widths > 255)
-		ld hl,(iy+6)	; screen.width
-		xor a
-		or h
-		ld hl,fbfont_0
-		jr z,1f
-		ld hl,fbfont_1
-	1:	ld de,fbfont
-		ld bc,5
-		ldir
 
 		ld hl,(iy+6)	; screen.width
 		ld de,0
@@ -274,6 +279,32 @@ term_init:	; size the terminal. needed after mode change
 
 		ld hl,_interpret_char
 		ld (vdp_active_fn),hl
+
+		pop iy
+		
+		call fb_cls
+		call fb_reset_cols
+		call fb_cursor_home
+
+		pop ix
+		ret
+
+term_init:	; size the terminal. needed after mode change
+		push ix
+		push iy
+		ld a,3
+		rst.lil 0x20
+
+		; set font (wider font for screen widths > 255)
+		ld hl,(iy+6)	; screen.width
+		ld c,0
+		xor a
+		or h
+		jr z,1f
+		inc c
+	1:	push bc
+		call _fbterm_setfont
+		pop bc
 
 		pop iy
 		pop ix
@@ -591,10 +622,7 @@ _interpret_char:
 
 	.handle_gohome:
 		call clear_delayed_scroll
-		xor a
-		ld (_fb_curs_x),a
-		ld (_fb_curs_y),a
-		call update_curs_ptr
+		call fb_cursor_home
 		jp .end
 
 	.handle_gotoxy:
@@ -620,11 +648,9 @@ _interpret_char:
 	.handle_cls:
 		call clear_delayed_scroll
 		call fb_cls
-		xor a
-		ld (_fbterm_bg),a
-		dec a
-		ld (_fbterm_fg),a
-		jp .handle_gohome
+		call fb_reset_cols
+		call fb_cursor_home
+		jp .end
 
 	.handle_clg:
 		call clear_delayed_scroll
@@ -755,6 +781,22 @@ raw_draw_char:
 		pop de
 		djnz .lineloop
 
+		ret
+
+fb_reset_cols:
+		; clear colors
+		xor a
+		ld (_fbterm_bg),a
+		dec a
+		ld (_fbterm_fg),a
+		ret
+
+fb_cursor_home:
+		; move cursor to home
+		xor a
+		ld (_fb_curs_x),a
+		ld (_fb_curs_y),a
+		call update_curs_ptr
 		ret
 
 fb_cls:

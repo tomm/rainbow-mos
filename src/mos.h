@@ -75,6 +75,7 @@ int mos_cmdMEM(char *ptr);
 int mos_cmdPRINTF(char *ptr);
 int mos_cmdECHO(char *ptr);
 int mos_cmdFBMODE(char *ptr);
+int mos_cmdFBFONT(char *ptr);
 int mos_cmdMEMDUMP(char *ptr);
 
 uint24_t mos_LOAD(char *filename, uint24_t address, uint24_t size);
@@ -202,8 +203,11 @@ uint8_t fat_EOF(FIL *fp);
 #define HELP_TYPE "Display the contents of a file on the screen\r\n"
 #define HELP_TYPE_ARGS "<filename>"
 
-#define HELP_FBMODE "Set EZ80 GPIO Video mode"
+#define HELP_FBMODE "Set EZ80 GPIO framebuffer mode"
 #define HELP_FBMODE_ARGS "<mode_number>"
+
+#define HELP_FBFONT "Set EZ80 GPIO framebuffer console font"
+#define HELP_FBFONT_ARGS "0 or 1"
 
 #define HELP_HOTKEY "Store a command in one of 12 hotkey slots assigned to F1-F12\r\n\r\n" \
 		    "Optionally, the command string can include \"%s\" as a marker\r\n"    \

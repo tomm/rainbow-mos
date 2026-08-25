@@ -21,6 +21,7 @@ struct __attribute__((packed)) fbmodeinfo_t {
 extern void init_fbterm(void);
 extern int start_fbterm(int mode, void *fb_base, void *fb_scanline_offsets);
 extern void stop_fbterm(void);
+extern void fbterm_setfont(uint8_t fontidx);
 extern uint8_t fb_driverversion(void);
 extern struct fbmodeinfo_t *fb_lookupmode(int mode);
 extern uint8_t fb_curs_x, fb_curs_y, fbterm_fg, fbterm_bg;
