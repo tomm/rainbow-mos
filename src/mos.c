@@ -103,6 +103,7 @@ static const t_mosCommand mosCommands[] = {
 	{ "EXEC", &mos_cmdEXEC, HELP_EXEC_ARGS, HELP_EXEC },
 #ifdef FEAT_FRAMEBUFFER
 	{ "FBMODE", &mos_cmdFBMODE, HELP_FBMODE_ARGS, HELP_FBMODE },
+	{ "MODE", &mos_cmdFBMODE, HELP_FBMODE_ARGS, HELP_FBMODE },
 	{ "FONT", &mos_cmdFBFONT, HELP_FBFONT_ARGS, HELP_FBFONT },
 #endif /* FEAT_FRAMEBUFFER */
 	{ "HELP", &mos_cmdHELP, HELP_HELP_ARGS, HELP_HELP },
