@@ -54,6 +54,7 @@ extern void *set_vector(unsigned int vector, void (*handler)(void));
 extern void vblank_handler(void);
 extern void uart0_handler(void);
 extern void i2c_handler(void);
+extern void gpiovideoapi_init(void);
 
 extern bool vdpSupportsTextPalette;
 
@@ -131,6 +132,7 @@ int main(void)
 	init_UART0();			   // Initialise UART0 for the ESP32 interface
 	init_UART1();			   // Initialise UART1
 #ifdef FEAT_FRAMEBUFFER
+	gpiovideoapi_init();
 	init_fbterm();
 #endif					   /* FEAT_FRAMEBUFFER */
 	asm volatile("ei");
@@ -179,6 +181,9 @@ int main(void)
 	}
 
 #ifdef FEAT_FRAMEBUFFER
+#ifdef FEAT_FRAMEBUFFER_BOOT_FBMODE
+	mos_FBMODE(FEAT_FRAMEBUFFER_BOOT_FBMODE);
+#endif /* FEAT_FRAMEBUFFER_BOOT_FBMODE */
 	{
 		int err = mos_EXEC("/mos/fbinit.bat", cmd, sizeof cmd); // Then load and run the config file
 		if (err > 0 && err != FR_NO_FILE) {

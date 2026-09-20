@@ -1113,7 +1113,10 @@ int mos_cmdMEM(char *ptr)
 	// data and bss together
 	kprintf("MOS:DATA &%06x-&%06x %6d bytes\r\n", (int)__data_start, (int)__heapbot - 1, (int)__heapbot - (int)__data_start);
 	kprintf("MOS:HEAP &%06x-&%06x %6d bytes\r\n", (int)__heapbot, (int)__heaptop - 1, HEAP_LEN);
-	kprintf("RESERVED &b7e000-&b7ffff   8192 bytes\r\n");
+#ifdef FEAT_FRAMEBUFFER
+	kprintf("AUDIOBUF &%06x-&%06x %6d bytes\r\n", (int)__heaptop, MOS_externLastRAMaddress, 1 + MOS_externLastRAMaddress - (int)__heaptop);
+#endif /* FEAT_FRAMEBUFFER */
+	kprintf("USER:HI  &b7e000-&b7ffff   8192 bytes\r\n");
 	kprintf("\r\n");
 
 	// find largest kmalloc contiguous region

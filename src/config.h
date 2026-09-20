@@ -19,5 +19,6 @@
 
 /* EZ80 GPIO framebuffer video support (rst10/18 console emulation) */
 #define FEAT_FRAMEBUFFER
+#define FEAT_FRAMEBUFFER_BOOT_FBMODE 0
 
 #endif					/* CONFIG_H */

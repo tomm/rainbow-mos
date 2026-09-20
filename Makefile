@@ -1,5 +1,5 @@
 VERSION_GITREF=$(shell git log -1 --date=format:"%Y%m%d" --format="%ad")-$(shell git rev-parse --short HEAD)
-DEBUG=1
+DEBUG=0
 
 # verbosity - comment to show all output
 #V = @
