@@ -24,6 +24,7 @@ Rainbow MOS's unique features are:
 
 Features incorporated from Platform MOS 3.x:
  - All ffs_api_* syscalls (FatFS API)
+ - sd_api_* syscalls (with bug fixes not present in Platform MOS 3.0.2)
  - mos_api_unpackrtc and mos_api_flseek_p syscalls
 
 New syscalls unique to Rainbow MOS are documented as ASM examples in
