@@ -6,7 +6,7 @@
 #include "version.h"
 #include <string.h>
 
-static uint8_t quickrand(void)
+uint8_t quickrand(void)
 {
 	uint8_t out;
 	asm volatile("ld a,r\n"

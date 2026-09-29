@@ -12,12 +12,15 @@
 #ifndef SD_H
 #define SD_H
 
+#include "defines.h"
+
 #define SD_SUCCESS 0
 #define SD_ERROR 1
+#define SD_LOCKED 2
 #define SD_READY 0
 
-uint8_t SD_readBlocks(DWORD addr, uint8_t *buf, WORD count);
-uint8_t SD_writeBlocks(DWORD addr, const uint8_t *buf, WORD count);
+uint8_t SD_readBlocks(uint32_t addr, uint8_t *buf, uint16_t count);
+uint8_t SD_writeBlocks(uint32_t addr, const uint8_t *buf, uint16_t count);
 
 uint8_t SD_init();
 
