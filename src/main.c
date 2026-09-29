@@ -183,7 +183,7 @@ int main(void)
 #ifdef FEAT_FRAMEBUFFER
 #ifdef FEAT_FRAMEBUFFER_BOOT_FBMODE
 	mos_FBMODE(FEAT_FRAMEBUFFER_BOOT_FBMODE);
-#endif /* FEAT_FRAMEBUFFER_BOOT_FBMODE */
+#endif									/* FEAT_FRAMEBUFFER_BOOT_FBMODE */
 	{
 		int err = mos_EXEC("/mos/fbinit.bat", cmd, sizeof cmd); // Then load and run the config file
 		if (err > 0 && err != FR_NO_FILE) {

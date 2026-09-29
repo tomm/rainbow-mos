@@ -1098,7 +1098,7 @@ extern uint8_t sysvars[];
 int mos_cmdMEM(char *ptr)
 {
 	int try_len = HEAP_LEN;
-	
+
 	uint24_t heapUsed, heapFree, heapLargest;
 	umm_heap_stats(NULL, &heapUsed, &heapFree, &heapLargest);
 
@@ -1142,7 +1142,8 @@ int mos_cmdMEMDUMP(char *ptr)
 		len = 0x100;
 	}
 	size_t i = 0;
-	const int width = scrcols <= 30 ? 4 : scrcols <= 40 ? 8 : scrcols <= 60 ? 12
+	const int width = scrcols <= 30 ? 4 : scrcols <= 40 ? 8
+	    : scrcols <= 60				    ? 12
 							    : 16;
 
 	paginated_start(true);

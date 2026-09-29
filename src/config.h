@@ -21,4 +21,4 @@
 #define FEAT_FRAMEBUFFER
 #define FEAT_FRAMEBUFFER_BOOT_FBMODE 0
 
-#endif					/* CONFIG_H */
+#endif /* CONFIG_H */
