@@ -41,6 +41,7 @@ extern void *umm_malloc(uint24_t size);
 extern void *umm_calloc(uint24_t num, uint24_t size);
 extern void *umm_realloc(void *ptr, uint24_t size);
 extern void  umm_free(void *ptr);
+extern void umm_heap_stats(uint24_t *total, uint24_t *used, uint24_t *free, uint24_t *largest_free);
 
 /* ------------------------------------------------------------------------ */
 

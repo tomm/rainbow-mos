@@ -1098,6 +1098,9 @@ extern uint8_t sysvars[];
 int mos_cmdMEM(char *ptr)
 {
 	int try_len = HEAP_LEN;
+	
+	uint24_t heapUsed, heapFree, heapLargest;
+	umm_heap_stats(NULL, &heapUsed, &heapFree, &heapLargest);
 
 	kprintf("ROM      &000000-&01ffff     %2d%% used\r\n", ((int)__rodata_end + (int)__data_len) / 1311);
 #ifdef FEAT_FRAMEBUFFER
@@ -1119,23 +1122,13 @@ int mos_cmdMEM(char *ptr)
 #endif /* FEAT_FRAMEBUFFER */
 	kprintf("USER:HI  &b7e000-&b7ffff   8192 bytes\r\n");
 	kprintf("\r\n");
-
-	// find largest kmalloc contiguous region
-	for (; try_len > 0; try_len -= 8) {
-		void *p = umm_malloc(try_len);
-		if (p) {
-			umm_free(p);
-			break;
-		}
-	}
-
-	kprintf("Largest free MOS:HEAP fragment: %d b\r\n", try_len);
+	kprintf("MOS:HEAP used: %d b, free: %d b\r\n", heapUsed, heapFree);
+	kprintf("Largest free MOS:HEAP fragment: %d b\r\n", heapLargest);
+	kprintf("\r\n");
 	kprintf("Sysvars at &%06x\r\n", (uint24_t)sysvars);
 #ifdef DEBUG
 	kprintf("Stack highwatermark: &%06x (%d b)\r\n", stack_highwatermark, (uint24_t)_stack - stack_highwatermark);
 #endif /* DEBUG */
-	kprintf("\r\n");
-
 	return 0;
 }
 
