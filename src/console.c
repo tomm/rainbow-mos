@@ -107,14 +107,21 @@ struct console_driver_t *active_console = &vdp_console;
 void console_enable_fb()
 {
 	active_console = &fb_console;
-	/* Call mos_api_setresetvector to set rst10 vector */
+	/* Call mos_api_setresetvector to set rst10,rst18 vectors */
 	asm volatile(
 	    "push de\n"
 	    "push hl\n"
+
 	    "ld a,0x61 \n"
 	    "ld e,0x10 \n"
 	    "ld hl,_fbconsole_rst10_handler \n"
 	    "rst.lil 8\n"
+
+	    "ld a,0x61 \n"
+	    "ld e,0x18 \n"
+	    "ld hl,_fbconsole_rst18_handler \n"
+	    "rst.lil 8\n"
+
 	    "pop hl\n"
 	    "pop de\n");
 }
@@ -127,10 +134,17 @@ void console_enable_vdp()
 	asm volatile(
 	    "push de\n"
 	    "push hl\n"
+
 	    "ld a,0x61 \n"
 	    "ld e,0x10 \n"
 	    "ld hl,rst_10_handler \n"
 	    "rst.lil 8\n"
+
+	    "ld a,0x61 \n"
+	    "ld e,0x18 \n"
+	    "ld hl,rst_18_handler \n"
+	    "rst.lil 8\n"
+
 	    "pop hl\n"
 	    "pop de\n");
 }

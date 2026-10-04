@@ -17,6 +17,7 @@
 		.global _fb_driverversion
 		.global _fb_base
 		.global _fbconsole_rst10_handler
+		.global _fbconsole_rst18_handler
 		.global _fb_vdp_palette
 
 #include "config.h"
@@ -200,6 +201,69 @@ _start_fbterm:
 		ld hl,2
 		ret
 
+_fbconsole_rst18_handler:
+		push ix
+		push iy
+
+		push af
+		push bc
+		push hl
+
+		; Try to take cursor mutex
+		ld hl,cursor_mutex
+	1:	srl (hl)
+		jr nc,1b		; nope. someone else holds it
+
+		call hide_cursor
+
+		pop hl
+		pop bc
+		pop af
+
+		LD	E, A 			; Preserve the delimiter
+		LD	A, MB			; Check if MBASE is 0
+		OR	A, A 
+		CALL	NZ, SET_AHL24		; No, so create a 24-bit pointer
+		LD	A, B			; Check for BC = 0
+		OR	C 			; Yes, so run in delimited mode?
+		JR	Z, .fb_rst_18_handler_1
+
+	.fb_rst_18_handler_0:
+		LD 	A, (HL)			; Fetch the character
+		push bc
+		push hl
+		call term_putch
+		pop hl
+		pop bc
+		INC 	HL 			; Increment the buffer pointer
+		DEC	BC 			; Decrement the loop counter
+		LD	A, B 			; Is it 0?
+		OR 	C 
+		JR	NZ, .fb_rst_18_handler_0	; No, so loop
+		jr .fb_rst_18_end
+
+	.fb_rst_18_handler_1:
+		LD 	A, (HL)			; Fetch the character
+		CP 	E 			; Is it the delimiter?
+		jr 	Z,.fb_rst_18_end 			; Yes, so return
+		push de
+		push hl
+		call term_putch
+		pop hl
+		pop de
+		INC 	HL 			; Increment the buffer pointer
+		JR 	.fb_rst_18_handler_1	; Loop
+
+	.fb_rst_18_end:
+		; Release cursor mutex
+		ld hl,cursor_mutex
+		inc (hl)
+
+		pop iy
+		pop ix
+		ret.lil
+
+
 _fbconsole_rst10_handler:
 		push af
 		push bc
@@ -228,7 +292,6 @@ _fbconsole_rst10_handler:
 		pop bc
 		pop af
 		ret.lil
-
 
 _fbterm_setfont:
 		push ix
