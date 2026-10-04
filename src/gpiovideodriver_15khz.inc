@@ -193,6 +193,87 @@ local .end_section
 		reti.lil
 endm
 
+; Yield every scanline, but don't scan out full width (pillarbox)
+macro RGB_15KHZ_NARROW_PIXELDATA numlines, frontporch_handler
+local .end_section
+		push af
+		push bc
+		push hl
+		DEJITTER_15KHZ_PRT
+
+	; Setup visible line
+		; 71 cycles hsync
+		; 10 cycles pre-assertion (properly belonging to front porch)
+		in0 b,(PD_DR)	; 4 cycles
+		res 7,b		; 2 cycles
+		out0 (PD_DR),b	; 4 cycles
+		; 71 cycles asserted
+		push de
+		UART0_RX_POLL_OR_AUDIO_46_CYC
+		push af
+
+		ld a,(_section_line_number)	; 5 cycles
+		ld bc,0				; 4 cycles
+		ld c,a				; 1 cyc
+		inc a				; 1 cyc
+		ld (_section_line_number),a	; 5 cyc
+		; hl = &fb_scanline_offsets[_section_line_number]
+		ld hl,(fb_scanline_offsets)	; 7 cycles
+		add hl,bc			; 1 cycles
+		add hl,bc			; 1 cycles
+		add hl,bc			; 1 cycles
+		REP_NOP_10x 5
+		REP_NOP 2
+		pop af		; 4 cyc
+		or 0b10000000		; 2 cycles (hsync off)
+		out0 (PD_DR),a 	; 4 cycles
+
+		; 35 cycles h.back porch (5 unused for start of loop)
+		REP_NOP_10x 2
+		REP_NOP 7
+		; ack timer interrupt
+		in0 a,(TMR1_CTL)	; 4 cycles
+		
+		; update the framebuffer pointer (26 cycles)
+		xor a			; 1 cycle
+		ld bc,(hl)		; 5 cycles
+		ld hl,(fb_ptr)		; 7 cycles
+		add hl,bc		; 1 cycle
+		ld de,PC_DR		; 4 cycles
+		ld bc,256		; 4 cycles
+
+		; 5 cycles of h.back porch
+		otirx			; 2 + 3 (+ 3*155 accounted for in next section)
+		; 470 cycles: visible area (3*155=465 from otirx)
+		out (PC_DR),a		; 3 cycles clear pixel data
+		
+		ld a,(_section_line_number)	; 5 cycles
+		cp numlines			; 2
+		jr z,.end_section
+		pop de
+		pop hl
+		pop bc
+		pop af
+		ei
+		reti.lil
+
+	.end_section:
+		; mark end of frame
+		ld hl,frame_counter	; 4 cycles
+		inc (hl)		; 2 cycles
+		xor a
+		ld (_section_line_number),a
+		ld bc,frontporch_handler
+		ld hl,(_timer1_int_vector)
+		ld (hl),bc
+		pop de
+		pop hl
+		pop bc
+		pop af
+		ei
+		reti.lil
+endm
+
 macro RGB_15KHZ_GRILLE_PIXELDATA numlines, frontporch_handler
 local .end_section
 		push af
@@ -214,13 +295,15 @@ local .end_section
 		ld a,(_section_line_number)	; 5 cycles
 		ld bc,0				; 4 cycles
 		ld c,a				; 1 cyc
+		inc a				; 1 cyc
+		ld (_section_line_number),a	; 5 cyc
 		; hl = &fb_scanline_offsets[_section_line_number]
 		ld hl,(fb_scanline_offsets)	; 7 cycles
 		add hl,bc			; 1 cycles
 		add hl,bc			; 1 cycles
 		add hl,bc			; 1 cycles
 		REP_NOP_10x 5
-		REP_NOP 8
+		REP_NOP 2
 		pop af		; 4 cyc
 		or 0b10000000		; 2 cycles (hsync off)
 		out0 (PD_DR),a 	; 4 cycles
@@ -252,16 +335,10 @@ local .end_section
 		HSYNC_ONLY_15KHZ
 		
 		; ack timer interrupt since we have overrun
-		ld bc,TMR1_CTL
-		in a,(bc)	; ACK
+		in0 a,(TMR1_CTL)
 		
-		; increment _section_line_number
 		ld a,(_section_line_number)	; 5 cycles
-		inc a				; 1
-		cp numlines			; 1
-		ld (_section_line_number),a	; 5 cycles
-
-	; Then GTFO
+		cp numlines			; 2
 		jr z,.end_section
 		pop de
 		pop hl
@@ -416,7 +493,7 @@ scan_rgb_15khz_288p_60hz_grille:
 _rgb_15khz_288p_scanline_grille_handler_frontporch:
 		HSYNC_PULSE_15KHZ 5, _rgb_15khz_288p_scanline_grille_handler_vsync
 _rgb_15khz_288p_scanline_grille_handler_vsync:
-		HSYNC_VSYNC_PULSE_15KHZ 1, _rgb_15khz_288p_scanline_grille_handler_backporch_firstline
+		HSYNC_VSYNC_PULSE_15KHZ 3, _rgb_15khz_288p_scanline_grille_handler_backporch_firstline
 _rgb_15khz_288p_scanline_grille_handler_backporch_firstline:
 		HSYNC_PULSE_15KHZ_END_VSYNC 1, _rgb_15khz_288p_scanline_grille_handler_backporch
 _rgb_15khz_288p_scanline_grille_handler_backporch:
@@ -440,11 +517,23 @@ scan_rgb_15khz_288p_50hz:
 _rgb_15khz_288p_scanline_handler_frontporch:
 		HSYNC_PULSE_15KHZ 4, _rgb_15khz_288p_scanline_handler_vsync
 _rgb_15khz_288p_scanline_handler_vsync:
-		HSYNC_VSYNC_PULSE_15KHZ 1, _rgb_15khz_288p_scanline_handler_backporch_firstline
+		HSYNC_VSYNC_PULSE_15KHZ 3, _rgb_15khz_288p_scanline_handler_backporch_firstline
 _rgb_15khz_288p_scanline_handler_backporch_firstline:
 		HSYNC_PULSE_15KHZ_END_VSYNC 1, _rgb_15khz_288p_scanline_handler_backporch
 _rgb_15khz_288p_scanline_handler_backporch:
 		HSYNC_PULSE_15KHZ 15, _rgb_15khz_288p_scanline_handler_pixeldata
 _rgb_15khz_288p_scanline_handler_pixeldata:
 		RGB_15KHZ_NOYIELD_PIXELDATA 288, _rgb_15khz_288p_scanline_handler_frontporch 
+
+scan_rgb_15khz_288p_50hz_narrow:
+_rgb_15khz_288p_scanline_narrow_handler_frontporch:
+		HSYNC_PULSE_15KHZ 21, _rgb_15khz_288p_scanline_narrow_handler_vsync
+_rgb_15khz_288p_scanline_narrow_handler_vsync:
+		HSYNC_VSYNC_PULSE_15KHZ 3, _rgb_15khz_288p_scanline_narrow_handler_backporch_firstline
+_rgb_15khz_288p_scanline_narrow_handler_backporch_firstline:
+		HSYNC_PULSE_15KHZ_END_VSYNC 1, _rgb_15khz_288p_scanline_narrow_handler_backporch
+_rgb_15khz_288p_scanline_narrow_handler_backporch:
+		HSYNC_PULSE_15KHZ 31, _rgb_15khz_288p_scanline_narrow_handler_pixeldata
+_rgb_15khz_288p_scanline_narrow_handler_pixeldata:
+		RGB_15KHZ_NARROW_PIXELDATA 256, _rgb_15khz_288p_scanline_narrow_handler_frontporch
 

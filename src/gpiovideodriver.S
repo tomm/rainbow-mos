@@ -276,6 +276,9 @@ _modes:
 
 		.d24 scan_rgb_15khz_288p_50hz, 294, 320, 288, 1
 		.db MODE_FLAG_15KHZ | MODE_FLAG_SLOW | MODE_FLAG_50HZ
+
+		.d24 scan_rgb_15khz_288p_50hz_narrow, 294, 256, 256, 1
+		.db MODE_FLAG_15KHZ | MODE_FLAG_50HZ
 _modes_end:
 num_modes: .equ [_modes_end-_modes]/modestruct_len
 
