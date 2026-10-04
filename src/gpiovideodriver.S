@@ -3,6 +3,7 @@
 		.assume adl=1
 		.altmacro	; enable local keyword in macros
 		.global _gpiovideoapi_init
+		.global gpio_current_mode_info
 
 mos_api_pollkeyboardevent: .equ 0x62
 		.bss
@@ -13,6 +14,7 @@ video_setup:
 	fb_ptr:		.ds 3 ; &[width*height]
 	fb_scanline_offsets: .ds 3; &[480*3 bytes for VGA modes]
 	pre_image_callback: .ds 3	; fn ptr. called one line before image scanout begins. last chance to swap buffers etc
+gpio_current_mode_info:
 _current_mode:	.ds 3		; ptr into _modes
 _timer1_int_vector:
 		.ds 3

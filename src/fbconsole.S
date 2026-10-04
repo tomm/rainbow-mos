@@ -1,3 +1,6 @@
+		; Text VDP emulation for gpio framebuffer video
+		; Uses the rst.l 0x20 API *except* avoiding api_getmodeinfo
+		; and instead peeking at gpio_current_mode_info to save bytes & cycles
 		.assume adl=1
 		.global _init_fbterm
 		.global _start_fbterm
@@ -525,9 +528,6 @@ move_cursor_up:
 		ret
 
 _interpret_char:
-		push ix
-		push iy
-
 		; handle special characters
 		cp 127
 		jp z,.handle_backspace
@@ -560,7 +560,7 @@ _interpret_char:
 		cp 8
 		jp z,.handle_curs_left
 		; All other <32 chars: ignore
-		jp .end
+		ret
 
 	.normal_char:
 		; No control sequence. Just draw char
@@ -569,72 +569,69 @@ _interpret_char:
 		pop af
 		call raw_draw_char
 		call move_cursor_right
-	.end:
-		pop iy
-		pop ix
 		ret
 
 	.handle_vdu23_general:
 		ld hl,_vdu23_arg1
 		ld (vdp_active_fn),hl
-		jp .end
+		ret
 
 	.handle_vdu22_changemode:
 		ld hl,_vdp_changemode
 		ld (vdp_active_fn),hl
-		jp .end
+		ret
 
 	.handle_rawchar:
 		ld hl,_vdp_fn_rawchar
 		ld (vdp_active_fn),hl
-		jr .end
+		ret
 
 	.handle_curs_up:
 		call clear_delayed_scroll
 		call move_cursor_up
-		jp .end
+		ret
 
 	.handle_curs_right:
 		push af
 		call do_scroll_if_needed
 		pop af
 		call move_cursor_right
-		jp .end
+		ret
 
 	.handle_curs_left:
 		call clear_delayed_scroll
 		call move_cursor_left
-		jp .end
+		ret
 
 	.handle_backspace:
 		call clear_delayed_scroll
 		call move_cursor_left
 		ld a,' '
 		call raw_draw_char
-		jp .end
+		ret
 
 	.handle_lf:
 		push af
 		call do_scroll_if_needed
 		pop af
 		call move_cursor_down
-		jp .end
+		ret
 
 	.handle_gohome:
 		call clear_delayed_scroll
 		call fb_cursor_home
-		jp .end
+		ret
 
 	.handle_gotoxy:
 		call clear_delayed_scroll
 		ld hl,_vdp_fn_gotoxy_arg0
 		ld (vdp_active_fn),hl
-		jp .end
+		ret
 
 	.handle_color:
 		ld hl,_vdp_fn_set_color
 		ld (vdp_active_fn),hl
-		jp .end
+		ret
 
 	.handle_cr:
 		push af
@@ -643,19 +640,19 @@ _interpret_char:
 		xor a
 		ld (_fb_curs_x),a
 		call update_curs_ptr
-		jp .end
+		ret
 
 	.handle_cls:
 		call clear_delayed_scroll
 		call fb_cls
 		call fb_reset_cols
 		call fb_cursor_home
-		jp .end
+		ret
 
 	.handle_clg:
 		call clear_delayed_scroll
 		call fb_cls
-		jp .end
+		ret
 
 	.clear_line:	; terminal line in de
 		push de
@@ -700,7 +697,7 @@ do_scroll_if_needed:
 		ret
 
 do_scroll:
-		call fb_get_modeinfo
+		ld iy,(gpio_current_mode_info)
 		; bc = screen.width * (screen.height-font.height)
 		ld de,(iy+6)	; screen.width
 		ld hl,(iy+9)	; screen.height
@@ -737,13 +734,6 @@ do_scroll:
 ;   color, or any other higher level terminal stuff. It just draws
 ;   the character.
 raw_draw_char:
-		push af
-		; modeinfo to iy
-		call fb_get_modeinfo
-		ld hl,(fb_curs_ptr)
-		push hl
-		pop ix
-		pop af
 		; seek to character in font
 		ld b,a
 		ld a,(fbfont_height)
@@ -751,35 +741,65 @@ raw_draw_char:
 		mlt bc
 		ld hl,(fbfont_bitmap)
 		add hl,bc
-		; draw it
+		; hl: font char bmp
 		ld b,a	; fbfont_height
-		ld a,(_fbterm_fg)
-		ld d,a
-		ld a,(_fbterm_bg)
-		ld e,a
-	.lineloop:
-		ld c,(hl)
-		inc hl
-		push hl
-		lea hl,ix+0		; framebuffer write position
-		push bc
-		ld a,(fbfont_width)
-		ld b,a
-	1:	rlc c
-		ld a,e
-		jr nc,2f
-		ld a,d
-	2:	ld (hl),a
-		inc hl
-		djnz 1b
-		pop bc
-		pop hl
 
-		push de
-		ld de,(iy+6)
-		add ix,de
+		exx
+			push bc
+			push de
+			push hl
+
+			; modeinfo to iy
+			ld iy,(gpio_current_mode_info)
+			ld hl,(iy+6) ; iy=modeinfo.width
+			ld a,(fbfont_width)
+			ld bc,0
+			ld c,a
+			or a
+			sbc hl,bc
+			push hl
+			pop iy	; iy=modeinfo.width-font.width
+
+			ld hl,(fb_curs_ptr)
+
+			ld a,(_fbterm_fg)
+			ld d,a
+			ld a,(_fbterm_bg)
+			ld e,a
+		exx
+
+		; b: font height
+		; hl: font
+		; hl': fb write position
+		; d': fgcol, e': bgcol
+	.char_yloop:
+		ld a,(hl)	; load font line
+		inc hl
+
+		exx
+			ld c,a
+			ld a,(fbfont_width)
+			ld b,a
+		.char_xloop:
+			rlc c
+			ld a,e
+			jr nc,2f
+			ld a,d
+		2:	ld (hl),a
+			inc hl
+			djnz .char_xloop
+
+			lea bc,iy+0 ; iy: modeinfo.width - font.width
+			add hl,bc
+		exx
+
+		djnz .char_yloop
+
+		exx
+		pop hl
 		pop de
-		djnz .lineloop
+		pop bc
+		exx
 
 		ret
 
@@ -801,7 +821,7 @@ fb_cursor_home:
 
 fb_cls:
 		push iy
-		call fb_get_modeinfo	; iy
+		ld iy,(gpio_current_mode_info)
 
 		; total screen bytes (minus 1) in bc
 		ld hl,(iy+6)
@@ -847,39 +867,31 @@ hide_cursor:
 
 toggle_cursor:
 		push iy
-		; get modeinfo (iy)
-		call fb_get_modeinfo
+		ld iy,(gpio_current_mode_info)
 		ld a,(fbterm_flags)
 		xor FLAG_IS_CURSOR_VIS
 		ld (fbterm_flags),a
 		ld hl,(fb_curs_ptr)
 		ld a,(fbfont_height)
 		ld b,a
-	.yloop:
+	.curs_yloop:
 		push bc
 		ld a,(fbfont_width)
 		ld b,a
 		push hl
-	.xloop:
+	.curs_xloop:
 		ld a,(hl)
 		xor 0x3
 		ld (hl),a
 		inc hl
-		djnz .xloop
+		djnz .curs_xloop
 		pop hl
 		pop bc
 		ld de,(iy+6)	; screen.width
 		add hl,de
-		djnz .yloop
+		djnz .curs_yloop
 	
 		pop iy
-		ret
-
-fb_get_modeinfo:	; to iy
-		push af
-		ld a,3
-		rst.lil 0x20
-		pop af
 		ret
 
 update_curs_ptr:
@@ -889,14 +901,16 @@ update_curs_ptr:
 
 get_hl_ptr_cursor_pos:
 		push ix
-		call fb_get_modeinfo	; iy
+		ld iy,(gpio_current_mode_info)
 	
 		; find character y position
-		ld hl,(iy+6)	; screen.width
-		ld de,0
+		ld de,(iy+6)	; screen.width
+		ld hl,0
 		ld a,(fbfont_height)
-		ld e,a
-		call umul24	; hl=screen.width*font.height
+		ld b,a
+	1:	add hl,de
+		djnz 1b
+		; hl=screen.width*font.height
 
 		; hl=screen.width*font.height*_fb_curs_y
 		ld de,0
@@ -964,7 +978,7 @@ always_draw_trippy_logo:
 		ld a,(iy+0) ; frame count
 		push af
 
-		call fb_get_modeinfo	; iy
+		ld iy,(gpio_current_mode_info)
 		; splash logo
 		ld de,(_fb_base)
 		ld hl,logo
